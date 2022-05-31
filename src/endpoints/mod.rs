@@ -44,7 +44,7 @@ impl<'a, T> FtxResponse<'a, T> {
         match self {
             FtxResponse::Success(success) => Ok(success.result),
             FtxResponse::Failure(failure) => {
-                Err(Error::new(ErrorKind::Rejected).with_source(failure.error))
+                Err(Error::new(ErrorKind::RejectedByExchange).with_source(failure.error))
             }
         }
     }

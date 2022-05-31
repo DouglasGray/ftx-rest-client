@@ -68,7 +68,7 @@ pub enum ErrorKind {
     RequestExecutionFailed(Option<StatusCode>),
     RateLimitExceeded,
     DeserializationFailed,
-    Rejected,
+    RejectedByExchange,
 }
 
 impl fmt::Display for ErrorKind {
@@ -87,7 +87,7 @@ impl fmt::Display for ErrorKind {
             },
             RateLimitExceeded => f.write_str("rate limits exceeded"),
             DeserializationFailed => f.write_str("failed to deserialize response"),
-            Rejected => f.write_str("request rejected by the exchange"),
+            RejectedByExchange => f.write_str("request rejected by the exchange"),
         }
     }
 }
