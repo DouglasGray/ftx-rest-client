@@ -1,5 +1,4 @@
 use async_trait::async_trait;
-use bytes::Bytes;
 use config::{Config, Environment};
 use crossbeam_channel::{Receiver, Sender};
 use dotenv::dotenv;
@@ -28,7 +27,6 @@ static THROTTLER: Lazy<Receiver<Sender<()>>> = Lazy::new(|| {
 pub async fn make_request<'de, R>(request: &R) -> R::Response
 where
     R: Request<false> + Send + Sync,
-    R::Response: AsRef<Bytes>,
 {
     let client = TestClient::new();
 
@@ -49,7 +47,6 @@ where
 pub async fn make_auth_request<'de, R, E>(client: &E, request: &R) -> R::Response
 where
     R: Request<true> + Send + Sync,
-    R::Response: AsRef<Bytes>,
     E: AuthExecutor<R>,
 {
     let response = client
