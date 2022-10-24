@@ -80,7 +80,7 @@ mod tests {
 }
 "#;
         GetLatencyStatisticsResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 }

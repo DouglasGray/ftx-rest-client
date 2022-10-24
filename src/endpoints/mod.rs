@@ -126,8 +126,8 @@ mod macros {
 
             impl crate::private::Sealed for $res {}
 
-            impl<'de> crate::Response<'de> for $res {
-                type Data = $data;
+            impl crate::Response for $res {
+                type Data<'a> = $data;
             }
         };
     }

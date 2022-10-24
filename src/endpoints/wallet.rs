@@ -28,7 +28,7 @@ impl Request<true> for GetCoins {
 
 pub struct GetCoinsResponse(Bytes);
 
-response!(GetCoinsResponse, Vec<Coin<'de>>);
+response!(GetCoinsResponse, Vec<Coin<'a>>);
 
 /// Retrieve coin balances.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -46,7 +46,7 @@ impl Request<true> for GetBalances {
 
 pub struct GetBalancesResponse(Bytes);
 
-response!(GetBalancesResponse, Vec<Balance<'de>>);
+response!(GetBalancesResponse, Vec<Balance<'a>>);
 
 /// Retrieve coin balances for all account.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -66,7 +66,7 @@ pub struct GetAllBalancesResponse(Bytes);
 
 response!(
     GetAllBalancesResponse,
-    HashMap<AccountName<'de>, Vec<Balance<'de>>>
+    HashMap<AccountName<'a>, Vec<Balance<'a>>>
 );
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -156,7 +156,7 @@ mod tests {
   ]
 }
 "#;
-        GetCoinsResponse(json.as_bytes().into()).to_data().unwrap();
+        GetCoinsResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -177,9 +177,7 @@ mod tests {
   ]
 }
 "#;
-        GetBalancesResponse(json.as_bytes().into())
-            .to_data()
-            .unwrap();
+        GetBalancesResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -223,7 +221,7 @@ mod tests {
 }
 "#;
         GetAllBalancesResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 }

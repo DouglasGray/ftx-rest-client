@@ -41,7 +41,7 @@ impl Request<true> for GetSubaccounts {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetSubaccountsResponse(Bytes);
 
-response!(GetSubaccountsResponse, Vec<Subaccount<'de>>);
+response!(GetSubaccountsResponse, Vec<Subaccount<'a>>);
 
 /// Create a subaccount.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -66,7 +66,7 @@ impl<'a> Request<true> for CreateSubaccount<'a> {
 
 pub struct CreateSubaccountResponse(Bytes);
 
-response!(CreateSubaccountResponse, Subaccount<'de>);
+response!(CreateSubaccountResponse, Subaccount<'a>);
 
 /// Change a subaccount name
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -145,7 +145,7 @@ impl<'a> Request<true> for GetSubaccountBalances<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetSubaccountBalancesResponse(Bytes);
 
-response!(GetSubaccountBalancesResponse, Vec<SubaccountBalance<'de>>);
+response!(GetSubaccountBalancesResponse, Vec<SubaccountBalance<'a>>);
 
 /// Transfer between subaccounts.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -173,7 +173,7 @@ impl<'a> Request<true> for TransferBetweenSubaccounts<'a> {
 
 pub struct TransferBetweenSubaccountsResponse(Bytes);
 
-response!(TransferBetweenSubaccountsResponse, TransferDetails<'de>);
+response!(TransferBetweenSubaccountsResponse, TransferDetails<'a>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -239,7 +239,7 @@ mod tests {
 }
 "#;
         GetSubaccountsResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -258,7 +258,7 @@ mod tests {
 }
 "#;
         CreateSubaccountResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -271,7 +271,7 @@ mod tests {
 }
 "#;
         ChangeSubaccountNameResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -284,7 +284,7 @@ mod tests {
 }
 "#;
         DeleteSubaccountResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -308,7 +308,7 @@ mod tests {
 "#;
 
         GetSubaccountBalancesResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -329,7 +329,7 @@ mod tests {
 "#;
 
         TransferBetweenSubaccountsResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 }

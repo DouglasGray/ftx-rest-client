@@ -78,7 +78,7 @@ impl<'a> Request<true> for GetFills<'a> {
 
 pub struct GetFillsResponse(Bytes);
 
-response!(GetFillsResponse, Vec<Fill<'de>>);
+response!(GetFillsResponse, Vec<Fill<'a>>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -135,6 +135,6 @@ mod tests {
   ]
 }
 "#;
-        GetFillsResponse(json.as_bytes().into()).to_data().unwrap();
+        GetFillsResponse(json.as_bytes().into()).parse().unwrap();
     }
 }

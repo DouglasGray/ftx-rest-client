@@ -15,5 +15,5 @@ async fn main() {
         .await
         .unwrap();
 
-    println!("{:#?}", response.to_data().unwrap());
+    println!("{:#?}", response.parse().unwrap());
 }

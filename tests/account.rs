@@ -20,7 +20,7 @@ async fn get_account_information() {
 
     common::make_auth_request(&client, &GetAccountInformation)
         .await
-        .to_data()
+        .parse()
         .unwrap();
 }
 
@@ -40,7 +40,7 @@ async fn get_positions() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap();
 }
 
@@ -55,7 +55,7 @@ async fn change_account_leverage_then_change_it_back() {
 
     let old_leverage = common::make_auth_request(&client, &GetAccountInformation)
         .await
-        .to_data()
+        .parse()
         .unwrap()
         .leverage;
 
@@ -66,7 +66,7 @@ async fn change_account_leverage_then_change_it_back() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap();
 
     common::make_auth_request(
@@ -76,6 +76,6 @@ async fn change_account_leverage_then_change_it_back() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap();
 }

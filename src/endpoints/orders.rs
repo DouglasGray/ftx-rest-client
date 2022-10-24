@@ -118,7 +118,7 @@ impl<'a> Request<true> for GetOpenOrders<'a> {
 
 pub struct GetOpenOrdersResponse(Bytes);
 
-response!(GetOpenOrdersResponse, Vec<Order<'de>>);
+response!(GetOpenOrdersResponse, Vec<Order<'a>>);
 
 /// Retrieve information on historical orders.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -173,7 +173,7 @@ impl<'a> Request<true> for GetOrderHistory<'a> {
 
 pub struct GetOrderHistoryResponse(Bytes);
 
-response!(GetOrderHistoryResponse, Vec<Order<'de>>);
+response!(GetOrderHistoryResponse, Vec<Order<'a>>);
 
 /// Retrieve the status of an order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -205,7 +205,7 @@ impl<'a> Request<true> for GetOrderStatus<'a> {
 
 pub struct GetOrderStatusResponse(Bytes);
 
-response!(GetOrderStatusResponse, Order<'de>);
+response!(GetOrderStatusResponse, Order<'a>);
 
 /// Place an order. Set price to `None` if submitting a market order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -237,7 +237,7 @@ impl<'a> Request<true> for PlaceOrder<'a> {
 
 pub struct PlaceOrderResponse(Bytes);
 
-response!(PlaceOrderResponse, OrderPlaced<'de>);
+response!(PlaceOrderResponse, OrderPlaced<'a>);
 
 /// Edit an order. Exchange side this behaves like a cancel followed
 /// by a replacement.
@@ -275,7 +275,7 @@ impl<'a> Request<true> for EditOrder<'a> {
 
 pub struct EditOrderResponse(Bytes);
 
-response!(EditOrderResponse, OrderPlaced<'de>);
+response!(EditOrderResponse, OrderPlaced<'a>);
 
 /// Cancel an order
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -307,7 +307,7 @@ impl<'a> Request<true> for CancelOrder<'a> {
 
 pub struct CancelOrderResponse(Bytes);
 
-response!(CancelOrderResponse, CancelAckMsg<'de>);
+response!(CancelOrderResponse, CancelAckMsg<'a>);
 
 /// Cancel all orders.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -337,7 +337,7 @@ impl<'a> Request<true> for CancelAllOrders<'a> {
 
 pub struct CancelAllOrdersResponse(Bytes);
 
-response!(CancelAllOrdersResponse, CancelAckMsg<'de>);
+response!(CancelAllOrdersResponse, CancelAckMsg<'a>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -419,7 +419,7 @@ mod tests {
 }
 "#;
         GetOpenOrdersResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -453,7 +453,7 @@ mod tests {
 }
 "#;
         GetOrderHistoryResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -481,9 +481,7 @@ mod tests {
   }
 }
 "#;
-        PlaceOrderResponse(json.as_bytes().into())
-            .to_data()
-            .unwrap();
+        PlaceOrderResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -510,7 +508,7 @@ mod tests {
   }
 }
 "#;
-        EditOrderResponse(json.as_bytes().into()).to_data().unwrap();
+        EditOrderResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -540,7 +538,7 @@ mod tests {
 }
 "#;
         GetOrderStatusResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -552,9 +550,7 @@ mod tests {
   "result": "Order queued for cancelation"
 }
 "#;
-        CancelOrderResponse(json.as_bytes().into())
-            .to_data()
-            .unwrap();
+        CancelOrderResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -566,7 +562,7 @@ mod tests {
 }
 "#;
         CancelAllOrdersResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 }

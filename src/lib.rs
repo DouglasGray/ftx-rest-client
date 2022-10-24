@@ -14,8 +14,10 @@ pub mod auth;
 use async_trait::async_trait;
 use bytes::Bytes;
 use reqwest::Method;
+use rust_decimal::Decimal;
 use serde::Deserialize;
-use std::{borrow::Cow, convert::TryFrom, time::Duration};
+use serde_json::value::RawValue;
+use std::{borrow::Cow, convert::TryFrom, marker::PhantomData, time::Duration};
 
 pub type QueryParams = Vec<(&'static str, String)>;
 
@@ -40,7 +42,7 @@ pub trait Request<const AUTH: bool>: private::Sealed {
 
     const METHOD: Method;
 
-    type Response: From<Bytes>;
+    type Response: Response;
 
     fn path(&self) -> Cow<'_, str> {
         Cow::Borrowed(Self::PATH)
@@ -55,10 +57,15 @@ pub trait Request<const AUTH: bool>: private::Sealed {
     }
 }
 
-pub trait Response<'de>: AsRef<Bytes> + private::Sealed {
-    type Data: Deserialize<'de>;
+pub trait Response: From<Bytes> + AsRef<Bytes> + private::Sealed {
+    type Data<'a>
+    where
+        Self: 'a;
 
-    fn to_data(&'de self) -> Result<Self::Data, Error> {
+    fn parse<'a: 'de, 'de>(&'a self) -> Result<Self::Data<'a>, Error>
+    where
+        <Self as Response>::Data<'a>: Deserialize<'de>,
+    {
         FtxResponse::try_from(self.as_ref().as_ref())?.try_into()
     }
 }

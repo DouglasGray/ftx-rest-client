@@ -16,7 +16,7 @@ async fn get_coins() {
 
     common::make_auth_request(&AuthTestClient::new_for_main(), &GetCoins)
         .await
-        .to_data()
+        .parse()
         .unwrap();
 }
 
@@ -29,7 +29,7 @@ async fn get_balances() {
 
     common::make_auth_request(&AuthTestClient::new_for_main(), &GetBalances)
         .await
-        .to_data()
+        .parse()
         .unwrap();
 }
 
@@ -42,6 +42,6 @@ async fn get_all_balances() {
 
     common::make_auth_request(&AuthTestClient::new_for_main(), &GetAllBalances)
         .await
-        .to_data()
+        .parse()
         .unwrap();
 }

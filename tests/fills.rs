@@ -22,6 +22,6 @@ async fn get_fills() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap();
 }

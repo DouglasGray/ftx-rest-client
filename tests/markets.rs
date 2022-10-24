@@ -11,7 +11,7 @@ use std::convert::TryInto;
 #[tokio::test]
 #[ignore]
 async fn get_markets() {
-    common::make_request(&GetMarkets).await.to_data().unwrap();
+    common::make_request(&GetMarkets).await.parse().unwrap();
 }
 
 #[tokio::test]
@@ -19,7 +19,7 @@ async fn get_markets() {
 async fn get_market() {
     common::make_request(&GetMarket { market: "BTC-PERP" })
         .await
-        .to_data()
+        .parse()
         .unwrap();
 }
 
@@ -31,7 +31,7 @@ async fn get_orderbook() {
         depth: Some(BookDepth::new(20.try_into().unwrap()).unwrap()),
     })
     .await
-    .to_data()
+    .parse()
     .unwrap();
 }
 
@@ -44,7 +44,7 @@ async fn get_trades() {
         end_time: None,
     })
     .await
-    .to_data()
+    .parse()
     .unwrap();
 }
 
@@ -58,6 +58,6 @@ async fn get_candles() {
         end_time: None,
     })
     .await
-    .to_data()
+    .parse()
     .unwrap();
 }

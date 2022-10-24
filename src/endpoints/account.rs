@@ -117,7 +117,7 @@ impl Request<true> for GetAccountInformation {
 
 pub struct GetAccountInformationResponse(Bytes);
 
-response!(GetAccountInformationResponse, AccountInformation<'de>);
+response!(GetAccountInformationResponse, AccountInformation<'a>);
 
 /// Retrieve current positions.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
@@ -142,7 +142,7 @@ impl Request<true> for GetPositions {
 
 pub struct GetPositionsResponse(Bytes);
 
-response!(GetPositionsResponse, Vec<Position<'de>>);
+response!(GetPositionsResponse, Vec<Position<'a>>);
 
 /// Change an account's leverage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Hash)]
@@ -285,7 +285,7 @@ mod tests {
 }
 "#;
         GetAccountInformationResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -320,7 +320,7 @@ mod tests {
 }
 "#;
         GetPositionsResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 }

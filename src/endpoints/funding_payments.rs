@@ -52,7 +52,7 @@ impl<'a> Request<true> for GetFundingPayments<'a> {
 
 pub struct GetFundingPaymentsResponse(Bytes);
 
-response!(GetFundingPaymentsResponse, Vec<FundingPayment<'de>>);
+response!(GetFundingPaymentsResponse, Vec<FundingPayment<'a>>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -88,7 +88,7 @@ mod tests {
 }
 "#;
         GetFundingPaymentsResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 }

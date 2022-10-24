@@ -57,7 +57,7 @@ pub struct GetWeightsResponse(Bytes);
 
 response!(
     GetWeightsResponse,
-    HashMap<Underlying<'de>, NonNegativeDecimal>
+    HashMap<Underlying<'a>, NonNegativeDecimal>
 );
 
 /// Retrieve historical index prices in some time frame for the
@@ -102,7 +102,7 @@ impl<'a> Request<false> for GetCandles<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetCandlesResponse(Bytes);
 
-response!(GetCandlesResponse, Vec<Candle<'de>>);
+response!(GetCandlesResponse, Vec<Candle<'a>>);
 
 /// Retrieve information on an index's constituents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -132,7 +132,7 @@ pub struct GetConstituentsResponse(Bytes);
 
 response!(
     GetConstituentsResponse,
-    Vec<(Exchange<'de>, BaseCurrency<'de>, QuoteCurrency<'de>)>
+    Vec<(Exchange<'a>, BaseCurrency<'a>, QuoteCurrency<'a>)>
 );
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -172,9 +172,7 @@ mod tests {
   }
 }
 "#;
-        GetWeightsResponse(json.as_bytes().into())
-            .to_data()
-            .unwrap();
+        GetWeightsResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -195,9 +193,7 @@ mod tests {
   ]
 }
 "#;
-        GetCandlesResponse(json.as_bytes().into())
-            .to_data()
-            .unwrap();
+        GetCandlesResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -213,7 +209,7 @@ mod tests {
 }
 "#;
         GetConstituentsResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 }

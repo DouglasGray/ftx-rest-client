@@ -36,7 +36,7 @@ async fn place_limit_order_then_check_status() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .id;
 
@@ -47,7 +47,7 @@ async fn place_limit_order_then_check_status() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .into_iter()
     .any(|o| o.id == order_id);
@@ -61,7 +61,7 @@ async fn place_limit_order_then_check_status() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap();
 
     common::make_auth_request(
@@ -71,7 +71,7 @@ async fn place_limit_order_then_check_status() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap();
 
     let has_id = common::make_auth_request(
@@ -81,7 +81,7 @@ async fn place_limit_order_then_check_status() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .into_iter()
     .any(|o| o.id == order_id);
@@ -114,7 +114,7 @@ async fn place_limit_order_then_check_status_with_client_id() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .id;
 
@@ -125,7 +125,7 @@ async fn place_limit_order_then_check_status_with_client_id() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .into_iter()
     .any(|o| o.client_id == Some(&client_id));
@@ -139,7 +139,7 @@ async fn place_limit_order_then_check_status_with_client_id() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap();
 
     common::make_auth_request(
@@ -149,7 +149,7 @@ async fn place_limit_order_then_check_status_with_client_id() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap();
 
     let has_id = common::make_auth_request(
@@ -159,7 +159,7 @@ async fn place_limit_order_then_check_status_with_client_id() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .into_iter()
     .any(|o| o.client_id == Some(&client_id));
@@ -193,7 +193,7 @@ async fn place_limit_order_then_edit() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .id;
 
@@ -204,7 +204,7 @@ async fn place_limit_order_then_edit() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .into_iter()
     .any(|o| o.id == order_id);
@@ -224,7 +224,7 @@ async fn place_limit_order_then_edit() {
     )
     .await;
 
-    let order_edit = order_edit_response.to_data().unwrap();
+    let order_edit = order_edit_response.parse().unwrap();
 
     assert_eq!(order_edit.price, new_price);
     assert_eq!(order_edit.size, new_size);
@@ -238,7 +238,7 @@ async fn place_limit_order_then_edit() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap();
 
     let has_id = common::make_auth_request(
@@ -248,7 +248,7 @@ async fn place_limit_order_then_edit() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .into_iter()
     .any(|o| o.id == new_order_id);
@@ -285,7 +285,7 @@ async fn place_limit_order_then_edit_with_client_id() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap();
 
     let has_id = common::make_auth_request(
@@ -295,7 +295,7 @@ async fn place_limit_order_then_edit_with_client_id() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .into_iter()
     .any(|o| o.client_id == Some(&client_id));
@@ -315,7 +315,7 @@ async fn place_limit_order_then_edit_with_client_id() {
     )
     .await;
 
-    let order_edit = order_edit_response.to_data().unwrap();
+    let order_edit = order_edit_response.parse().unwrap();
 
     assert_eq!(order_edit.price, new_price);
     assert_eq!(order_edit.size, new_size);
@@ -328,7 +328,7 @@ async fn place_limit_order_then_edit_with_client_id() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap();
 
     let has_id = common::make_auth_request(
@@ -338,7 +338,7 @@ async fn place_limit_order_then_edit_with_client_id() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .into_iter()
     .any(|o| o.client_id == Some(&new_client_id));
@@ -368,7 +368,7 @@ async fn cancel_all_orders() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .id;
 
@@ -384,14 +384,14 @@ async fn cancel_all_orders() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap()
     .id;
 
     let open_orders_resp =
         common::make_auth_request(&client, &GetOpenOrders { market: None }).await;
 
-    let open_orders = open_orders_resp.to_data().unwrap();
+    let open_orders = open_orders_resp.parse().unwrap();
 
     let has_btc_order_id = open_orders.iter().any(|o| o.id == btc_order_id);
 
@@ -409,13 +409,13 @@ async fn cancel_all_orders() {
         },
     )
     .await
-    .to_data()
+    .parse()
     .unwrap();
 
     let open_orders_resp =
         common::make_auth_request(&client, &GetOpenOrders { market: None }).await;
 
-    let open_orders = open_orders_resp.to_data().unwrap();
+    let open_orders = open_orders_resp.parse().unwrap();
 
     let has_btc_order_id = open_orders.iter().any(|o| o.id == btc_order_id);
 

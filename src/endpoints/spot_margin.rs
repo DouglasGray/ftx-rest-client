@@ -27,7 +27,7 @@ impl Request<true> for GetBorrowRates {
 
 pub struct GetBorrowRatesResponse(Bytes);
 
-response!(GetBorrowRatesResponse, Vec<BorrowRate<'de>>);
+response!(GetBorrowRatesResponse, Vec<BorrowRate<'a>>);
 
 /// Retrieve the total daily borrowed amounts for all spot margin
 /// enabled coins.
@@ -46,7 +46,7 @@ impl Request<true> for GetDailyBorrowedAmounts {
 
 pub struct GetDailyBorrowedAmountsResponse(Bytes);
 
-response!(GetDailyBorrowedAmountsResponse, Vec<BorrowAmount<'de>>);
+response!(GetDailyBorrowedAmountsResponse, Vec<BorrowAmount<'a>>);
 
 /// Retrieve information on borrow rates for the provided spot market,
 /// i.e. what the rates are for the quote and base currency.
@@ -71,7 +71,7 @@ impl<'a> Request<true> for GetBorrowForMarket<'a> {
 
 pub struct GetBorrowMarketsResponse(Bytes);
 
-response!(GetBorrowMarketsResponse, Option<Vec<BorrowMarket<'de>>>);
+response!(GetBorrowMarketsResponse, Option<Vec<BorrowMarket<'a>>>);
 
 /// Retrieve an account's borrow history.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -109,7 +109,7 @@ impl Request<true> for GetBorrowHistory {
 
 pub struct GetBorrowHistoryResponse(Bytes);
 
-response!(GetBorrowHistoryResponse, Vec<BorrowPayment<'de>>);
+response!(GetBorrowHistoryResponse, Vec<BorrowPayment<'a>>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -172,7 +172,7 @@ mod tests {
 }
 "#;
         GetBorrowRatesResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -190,7 +190,7 @@ mod tests {
 }
 "#;
         GetDailyBorrowedAmountsResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -218,7 +218,7 @@ mod tests {
 }
 "#;
         GetBorrowMarketsResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -240,7 +240,7 @@ mod tests {
 }
 "#;
         GetBorrowHistoryResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 }

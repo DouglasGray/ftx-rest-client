@@ -79,7 +79,7 @@ impl Request<false> for GetMarkets {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetMarketsResponse(Bytes);
 
-response!(GetMarketsResponse, Vec<Market<'de>>);
+response!(GetMarketsResponse, Vec<Market<'a>>);
 
 /// Retrieve info on a single market.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -104,7 +104,7 @@ impl<'a> Request<false> for GetMarket<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetMarketResponse(Bytes);
 
-response!(GetMarketResponse, Market<'de>);
+response!(GetMarketResponse, Market<'a>);
 
 /// Retrieve an orderbook snapshot for the provided market.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -178,7 +178,7 @@ impl<'a> Request<false> for GetTrades<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetTradesResponse(Bytes);
 
-response!(GetTradesResponse, Vec<Trade<'de>>);
+response!(GetTradesResponse, Vec<Trade<'a>>);
 
 /// Retrieve historical prices in some time frame for the provided
 /// market.
@@ -222,7 +222,7 @@ impl<'a> Request<false> for GetCandles<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetCandlesResponse(Bytes);
 
-response!(GetCandlesResponse, Vec<Candle<'de>>);
+response!(GetCandlesResponse, Vec<Candle<'a>>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -336,9 +336,7 @@ mod tests {
   ]
 }
 "#;
-        GetMarketsResponse(json.as_bytes().into())
-            .to_data()
-            .unwrap();
+        GetMarketsResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -373,7 +371,7 @@ mod tests {
     }
 }
 "#;
-        GetMarketResponse(json.as_bytes().into()).to_data().unwrap();
+        GetMarketResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -394,7 +392,7 @@ mod tests {
 }
 "#;
 
-        GetTradesResponse(json.as_bytes().into()).to_data().unwrap();
+        GetTradesResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -415,8 +413,6 @@ mod tests {
   ]
 }
 "#;
-        GetCandlesResponse(json.as_bytes().into())
-            .to_data()
-            .unwrap();
+        GetCandlesResponse(json.as_bytes().into()).parse().unwrap();
     }
 }

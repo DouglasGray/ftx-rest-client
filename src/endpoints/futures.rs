@@ -72,7 +72,7 @@ impl Request<false> for GetFutures {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFuturesResponse(Bytes);
 
-response!(GetFuturesResponse, Vec<Future<'de>>);
+response!(GetFuturesResponse, Vec<Future<'a>>);
 
 /// Retrieve information on a single future.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -97,7 +97,7 @@ impl<'a> Request<false> for GetFuture<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFutureResponse(Bytes);
 
-response!(GetFutureResponse, Future<'de>);
+response!(GetFutureResponse, Future<'a>);
 
 /// Retrieve future statistics, including predicted funding rate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -122,7 +122,7 @@ impl<'a> Request<false> for GetFutureStats<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFutureStatsResponse(Bytes);
 
-response!(GetFutureStatsResponse, FutureStats<'de>);
+response!(GetFutureStatsResponse, FutureStats<'a>);
 
 /// Retrieve historical funding rates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -165,7 +165,7 @@ impl<'a> Request<false> for GetFundingRates<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFundingRatesResponse(Bytes);
 
-response!(GetFundingRatesResponse, Vec<FundingRate<'de>>);
+response!(GetFundingRatesResponse, Vec<FundingRate<'a>>);
 
 /// Retrieve information on all expired futures.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -184,7 +184,7 @@ impl Request<false> for GetExpiredFutures {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetExpiredFuturesResponse(Bytes);
 
-response!(GetExpiredFuturesResponse, Vec<ExpiredFuture<'de>>);
+response!(GetExpiredFuturesResponse, Vec<ExpiredFuture<'a>>);
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -343,9 +343,7 @@ mod tests {
   ]
 }
 "#;
-        GetFuturesResponse(json.as_bytes().into())
-            .to_data()
-            .unwrap();
+        GetFuturesResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -389,7 +387,7 @@ mod tests {
     }
 }
 "#;
-        GetFutureResponse(json.as_bytes().into()).to_data().unwrap();
+        GetFutureResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -409,7 +407,7 @@ mod tests {
 }
 "#;
         GetFutureStatsResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -428,7 +426,7 @@ mod tests {
 }
 "#;
         GetFundingRatesResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 
@@ -469,7 +467,7 @@ mod tests {
 }
 "#;
         GetExpiredFuturesResponse(json.as_bytes().into())
-            .to_data()
+            .parse()
             .unwrap();
     }
 }
