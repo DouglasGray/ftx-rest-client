@@ -1,5 +1,5 @@
 use rust_decimal::{serde::arbitrary_precision, Decimal};
-use serde::{de, Deserialize, Deserializer, Serialize};
+use serde::{de, ser, Deserialize, Deserializer, Serialize};
 use std::{
     cmp::Ordering,
     convert::TryFrom,
@@ -192,6 +192,37 @@ impl From<i128> for InvalidUnixTimestamp {
 impl From<f64> for InvalidUnixTimestamp {
     fn from(ts: f64) -> Self {
         Self::Float64(ts)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct FtxDateTime(OffsetDateTime);
+
+impl FtxDateTime {
+    pub fn get(&self) -> OffsetDateTime {
+        self.0
+    }
+}
+
+impl<'de> Deserialize<'de> for FtxDateTime {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s: &str = Deserialize::deserialize(deserializer)?;
+        OffsetDateTime::parse(s, &Rfc3339)
+            .map_err(de::Error::custom)
+            .map(Self)
+    }
+}
+
+impl Serialize for FtxDateTime {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let s = self.0.format(&Rfc3339).map_err(ser::Error::custom)?;
+        serializer.serialize_str(&s)
     }
 }
 
@@ -515,12 +546,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn datetime_str_parses() {
-        let s = DateTimeStr("2019-03-05T09:56:55.728933+00:00");
+    fn deserialize_datetime_str() {
+        let s = r#"["2019-03-05T09:56:55.728933+00:00"]"#;
 
-        assert_eq!(
-            datetime!(2019-03-05 09:56:55.728933 +00:00),
-            OffsetDateTime::try_from(s).unwrap()
-        )
+        let de: [FtxDateTime; 1] = serde_json::from_str(s).unwrap();
+
+        // Confirm datetime matches
+        assert_eq!(datetime!(2019-03-05 09:56:55.728933 +00:00), de[0].0);
     }
 }
