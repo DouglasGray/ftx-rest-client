@@ -119,7 +119,7 @@ impl<'a> Request<true> for GetOpenOrders<'a> {
 
 pub struct GetOpenOrdersResponse(Bytes);
 
-response!(GetOpenOrdersResponse, Vec<Order<'a>>);
+response!(GetOpenOrdersResponse, Vec<OrderPartial<'a>>);
 
 /// Retrieve information on historical orders.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -174,7 +174,7 @@ impl<'a> Request<true> for GetOrderHistory<'a> {
 
 pub struct GetOrderHistoryResponse(Bytes);
 
-response!(GetOrderHistoryResponse, Vec<Order<'a>>);
+response!(GetOrderHistoryResponse, Vec<OrderPartial<'a>>);
 
 /// Retrieve the status of an order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -206,7 +206,7 @@ impl<'a> Request<true> for GetOrderStatus<'a> {
 
 pub struct GetOrderStatusResponse(Bytes);
 
-response!(GetOrderStatusResponse, Order<'a>);
+response!(GetOrderStatusResponse, OrderPartial<'a>);
 
 /// Place an order. Set price to `None` if submitting a market order.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
@@ -238,7 +238,7 @@ impl<'a> Request<true> for PlaceOrder<'a> {
 
 pub struct PlaceOrderResponse(Bytes);
 
-response!(PlaceOrderResponse, OrderPlaced<'a>);
+response!(PlaceOrderResponse, OrderPlacedPartial<'a>);
 
 /// Edit an order. Exchange side this behaves like a cancel followed
 /// by a replacement.
@@ -276,7 +276,7 @@ impl<'a> Request<true> for EditOrder<'a> {
 
 pub struct EditOrderResponse(Bytes);
 
-response!(EditOrderResponse, OrderPlaced<'a>);
+response!(EditOrderResponse, OrderPlacedPartial<'a>);
 
 /// Cancel an order
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -343,7 +343,7 @@ response!(CancelAllOrdersResponse, CancelAckMsg<'a>);
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct Order<'a> {
+pub struct OrderPartial<'a> {
     #[serde(borrow)]
     pub id: Json<'a, u64>,
     pub client_id: Option<&'a str>,
@@ -380,7 +380,7 @@ pub struct Order<'a> {
 #[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct OrderPlaced<'a> {
+pub struct OrderPlacedPartial<'a> {
     #[serde(borrow)]
     pub id: Json<'a, u64>,
     pub client_id: Option<&'a str>,
@@ -422,7 +422,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedOrder<'a> {
+    pub struct Order<'a> {
         pub id: u64,
         pub client_id: Option<&'a str>,
         pub market: &'a str,
@@ -442,10 +442,10 @@ mod tests {
         pub created_at: FtxDateTime,
     }
 
-    impl<'a> TryFrom<Order<'a>> for ParsedOrder<'a> {
+    impl<'a> TryFrom<OrderPartial<'a>> for Order<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: Order<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: OrderPartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 id: val.id.deserialize()?,
                 client_id: val.client_id,
@@ -472,7 +472,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedOrderPlaced<'a> {
+    pub struct OrderPlaced<'a> {
         pub id: u64,
         pub client_id: Option<&'a str>,
         pub market: &'a str,
@@ -490,10 +490,10 @@ mod tests {
         pub created_at: FtxDateTime,
     }
 
-    impl<'a> TryFrom<OrderPlaced<'a>> for ParsedOrderPlaced<'a> {
+    impl<'a> TryFrom<OrderPlacedPartial<'a>> for OrderPlaced<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: OrderPlaced<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: OrderPlacedPartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 id: val.id.deserialize()?,
                 client_id: val.client_id,
@@ -542,11 +542,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedOrder> = GetOpenOrdersResponse(json.as_bytes().into())
+        let _: Vec<Order> = GetOpenOrdersResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedOrder::try_from(p).unwrap())
+            .map(|p| Order::try_from(p).unwrap())
             .collect();
     }
 
@@ -579,11 +579,11 @@ mod tests {
   "hasMoreData": false
 }
 "#;
-        let _: Vec<ParsedOrder> = GetOpenOrdersResponse(json.as_bytes().into())
+        let _: Vec<Order> = GetOpenOrdersResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedOrder::try_from(p).unwrap())
+            .map(|p| Order::try_from(p).unwrap())
             .collect();
     }
 
@@ -611,7 +611,7 @@ mod tests {
   }
 }
 "#;
-        let _: OrderPlaced<'_> = PlaceOrderResponse(json.as_bytes().into())
+        let _: OrderPlacedPartial<'_> = PlaceOrderResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .try_into()
@@ -642,7 +642,7 @@ mod tests {
   }
 }
 "#;
-        let _: OrderPlaced<'_> = EditOrderResponse(json.as_bytes().into())
+        let _: OrderPlacedPartial<'_> = EditOrderResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .try_into()
@@ -675,7 +675,7 @@ mod tests {
   }
 }
 "#;
-        let _: ParsedOrder<'_> = GetOrderStatusResponse(json.as_bytes().into())
+        let _: Order<'_> = GetOrderStatusResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .try_into()

@@ -44,12 +44,12 @@ impl<'a> Request<true> for GetLatencyStatistics<'a> {
 
 pub struct GetLatencyStatisticsResponse(Bytes);
 
-response!(GetLatencyStatisticsResponse, Vec<LatencyStats<'a>>);
+response!(GetLatencyStatisticsResponse, Vec<LatencyStatsPartial<'a>>);
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct LatencyStats<'a> {
+pub struct LatencyStatsPartial<'a> {
     #[serde(borrow)]
     pub bursty: Json<'a, bool>,
     #[serde(borrow)]
@@ -70,16 +70,16 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedLatencyStats {
+    pub struct LatencyStats {
         pub bursty: bool,
         pub p50: Decimal,
         pub request_count: u64,
     }
 
-    impl<'a> TryFrom<LatencyStats<'a>> for ParsedLatencyStats {
+    impl<'a> TryFrom<LatencyStatsPartial<'a>> for LatencyStats {
         type Error = serde_json::Error;
 
-        fn try_from(val: LatencyStats<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: LatencyStatsPartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 bursty: val.bursty.deserialize()?,
                 p50: val.p50.deserialize()?,
@@ -107,11 +107,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedLatencyStats> = GetLatencyStatisticsResponse(json.as_bytes().into())
+        let _: Vec<LatencyStats> = GetLatencyStatisticsResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedLatencyStats::try_from(p).unwrap())
+            .map(|p| LatencyStats::try_from(p).unwrap())
             .collect();
     }
 }

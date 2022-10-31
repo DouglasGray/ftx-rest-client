@@ -28,7 +28,7 @@ impl Request<true> for GetBorrowRates {
 
 pub struct GetBorrowRatesResponse(Bytes);
 
-response!(GetBorrowRatesResponse, Vec<BorrowRate<'a>>);
+response!(GetBorrowRatesResponse, Vec<BorrowRatePartial<'a>>);
 
 /// Retrieve the total daily borrowed amounts for all spot margin
 /// enabled coins.
@@ -47,7 +47,10 @@ impl Request<true> for GetDailyBorrowedAmounts {
 
 pub struct GetDailyBorrowedAmountsResponse(Bytes);
 
-response!(GetDailyBorrowedAmountsResponse, Vec<BorrowAmount<'a>>);
+response!(
+    GetDailyBorrowedAmountsResponse,
+    Vec<BorrowAmountPartial<'a>>
+);
 
 /// Retrieve information on borrow rates for the provided spot market,
 /// i.e. what the rates are for the quote and base currency.
@@ -72,7 +75,7 @@ impl<'a> Request<true> for GetBorrowForMarket<'a> {
 
 pub struct GetBorrowMarketsResponse(Bytes);
 
-response!(GetBorrowMarketsResponse, Vec<BorrowMarket<'a>>);
+response!(GetBorrowMarketsResponse, Vec<BorrowMarketPartial<'a>>);
 
 /// Retrieve an account's borrow history.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -110,12 +113,12 @@ impl Request<true> for GetBorrowHistory {
 
 pub struct GetBorrowHistoryResponse(Bytes);
 
-response!(GetBorrowHistoryResponse, Vec<BorrowPayment<'a>>);
+response!(GetBorrowHistoryResponse, Vec<BorrowPaymentPartial<'a>>);
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct BorrowRate<'a> {
+pub struct BorrowRatePartial<'a> {
     pub coin: &'a str,
     #[serde(borrow)]
     pub estimate: Json<'a, Decimal>,
@@ -126,7 +129,7 @@ pub struct BorrowRate<'a> {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct BorrowAmount<'a> {
+pub struct BorrowAmountPartial<'a> {
     pub coin: &'a str,
     #[serde(borrow)]
     pub size: Json<'a, Decimal>,
@@ -135,7 +138,7 @@ pub struct BorrowAmount<'a> {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct BorrowMarket<'a> {
+pub struct BorrowMarketPartial<'a> {
     pub coin: &'a str,
     #[serde(borrow)]
     pub borrowed: Json<'a, Decimal>,
@@ -150,7 +153,7 @@ pub struct BorrowMarket<'a> {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct BorrowPayment<'a> {
+pub struct BorrowPaymentPartial<'a> {
     pub coin: &'a str,
     #[serde(borrow)]
     pub cost: Json<'a, Decimal>,
@@ -176,16 +179,16 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedBorrowRate<'a> {
+    pub struct BorrowRate<'a> {
         pub coin: &'a str,
         pub estimate: Decimal,
         pub previous: Decimal,
     }
 
-    impl<'a> TryFrom<BorrowRate<'a>> for ParsedBorrowRate<'a> {
+    impl<'a> TryFrom<BorrowRatePartial<'a>> for BorrowRate<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: BorrowRate<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: BorrowRatePartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 coin: val.coin,
                 estimate: val.estimate.deserialize()?,
@@ -198,15 +201,15 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedBorrowAmount<'a> {
+    pub struct BorrowAmount<'a> {
         pub coin: &'a str,
         pub size: Decimal,
     }
 
-    impl<'a> TryFrom<BorrowAmount<'a>> for ParsedBorrowAmount<'a> {
+    impl<'a> TryFrom<BorrowAmountPartial<'a>> for BorrowAmount<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: BorrowAmount<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: BorrowAmountPartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 coin: val.coin,
                 size: val.size.deserialize()?,
@@ -218,7 +221,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedBorrowMarket<'a> {
+    pub struct BorrowMarket<'a> {
         pub coin: &'a str,
         pub borrowed: Decimal,
         pub free: Decimal,
@@ -226,10 +229,10 @@ mod tests {
         pub previous_rate: Decimal,
     }
 
-    impl<'a> TryFrom<BorrowMarket<'a>> for ParsedBorrowMarket<'a> {
+    impl<'a> TryFrom<BorrowMarketPartial<'a>> for BorrowMarket<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: BorrowMarket<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: BorrowMarketPartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 coin: val.coin,
                 borrowed: val.borrowed.deserialize()?,
@@ -244,7 +247,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedBorrowPayment<'a> {
+    pub struct BorrowPayment<'a> {
         pub coin: &'a str,
         pub cost: Decimal,
         pub fee_usd: Decimal,
@@ -253,10 +256,10 @@ mod tests {
         pub time: FtxDateTime,
     }
 
-    impl<'a> TryFrom<BorrowPayment<'a>> for ParsedBorrowPayment<'a> {
+    impl<'a> TryFrom<BorrowPaymentPartial<'a>> for BorrowPayment<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: BorrowPayment<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: BorrowPaymentPartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 coin: val.coin,
                 cost: val.cost.deserialize()?,
@@ -282,11 +285,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedBorrowRate> = GetBorrowRatesResponse(json.as_bytes().into())
+        let _: Vec<BorrowRate> = GetBorrowRatesResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedBorrowRate::try_from(p).unwrap())
+            .map(|p| BorrowRate::try_from(p).unwrap())
             .collect();
     }
 
@@ -303,11 +306,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedBorrowAmount> = GetDailyBorrowedAmountsResponse(json.as_bytes().into())
+        let _: Vec<BorrowAmount> = GetDailyBorrowedAmountsResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedBorrowAmount::try_from(p).unwrap())
+            .map(|p| BorrowAmount::try_from(p).unwrap())
             .collect();
     }
 
@@ -334,11 +337,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedBorrowMarket<'_>> = GetBorrowMarketsResponse(json.as_bytes().into())
+        let _: Vec<BorrowMarket<'_>> = GetBorrowMarketsResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedBorrowMarket::try_from(p).unwrap())
+            .map(|p| BorrowMarket::try_from(p).unwrap())
             .collect();
     }
 
@@ -359,11 +362,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedBorrowPayment<'_>> = GetBorrowHistoryResponse(json.as_bytes().into())
+        let _: Vec<BorrowPayment<'_>> = GetBorrowHistoryResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedBorrowPayment::try_from(p).unwrap())
+            .map(|p| BorrowPayment::try_from(p).unwrap())
             .collect();
     }
 }

@@ -99,7 +99,7 @@ impl<'a> Request<false> for GetCandles<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetCandlesResponse(Bytes);
 
-response!(GetCandlesResponse, Vec<Candle<'a>>);
+response!(GetCandlesResponse, Vec<CandlePartial<'a>>);
 
 /// Retrieve information on an index's constituents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -135,7 +135,7 @@ response!(
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct Candle<'a> {
+pub struct CandlePartial<'a> {
     #[serde(borrow)]
     pub close: Json<'a, Decimal>,
     #[serde(borrow)]
@@ -163,7 +163,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    struct ParsedCandle {
+    struct Candle {
         pub close: Decimal,
         pub high: Decimal,
         pub low: Decimal,
@@ -173,10 +173,10 @@ mod tests {
         volume: Option<()>, // Is always `null`
     }
 
-    impl<'a> TryFrom<Candle<'a>> for ParsedCandle {
+    impl<'a> TryFrom<CandlePartial<'a>> for Candle {
         type Error = serde_json::Error;
 
-        fn try_from(val: Candle<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: CandlePartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 close: val.close.deserialize()?,
                 high: val.high.deserialize()?,
@@ -228,11 +228,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedCandle> = GetCandlesResponse(json.as_bytes().into())
+        let _: Vec<Candle> = GetCandlesResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedCandle::try_from(p).unwrap())
+            .map(|p| Candle::try_from(p).unwrap())
             .collect();
     }
 

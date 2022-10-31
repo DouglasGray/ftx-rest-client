@@ -113,7 +113,7 @@ impl Request<true> for GetAccountInformation {
 
 pub struct GetAccountInformationResponse(Bytes);
 
-response!(GetAccountInformationResponse, AccountInformation<'a>);
+response!(GetAccountInformationResponse, AccountInformationPartial<'a>);
 
 /// Retrieve current positions.
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
@@ -138,7 +138,7 @@ impl Request<true> for GetPositions {
 
 pub struct GetPositionsResponse(Bytes);
 
-response!(GetPositionsResponse, Vec<Position<'a>>);
+response!(GetPositionsResponse, Vec<PositionPartial<'a>>);
 
 /// Change an account's leverage.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Hash)]
@@ -167,7 +167,7 @@ response!(ChangeAccountLeverageResponse, ());
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct AccountInformation<'a> {
+pub struct AccountInformationPartial<'a> {
     #[serde(borrow)]
     pub account_identifier: Json<'a, u64>,
     pub account_type: Option<&'a str>,
@@ -215,13 +215,13 @@ pub struct AccountInformation<'a> {
     #[serde(borrow)]
     pub spot_margin_withdrawals_enabled: Json<'a, bool>,
     #[serde(borrow)]
-    pub positions: Vec<Position<'a>>,
+    pub positions: Vec<PositionPartial<'a>>,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct Position<'a> {
+pub struct PositionPartial<'a> {
     #[serde(borrow)]
     pub cost: Json<'a, Decimal>,
     #[serde(borrow)]
@@ -273,7 +273,7 @@ mod tests {
     #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    struct ParsedAccountInformation<'a> {
+    struct AccountInformation<'a> {
         pub account_identifier: u64,
         pub account_type: Option<&'a str>,
         pub backstop_provider: bool,
@@ -298,14 +298,14 @@ mod tests {
         pub spot_lending_enabled: bool,
         pub spot_margin_enabled: bool,
         pub spot_margin_withdrawals_enabled: bool,
-        pub positions: Vec<ParsedPosition<'a>>,
+        pub positions: Vec<Position<'a>>,
     }
 
-    impl<'a> TryFrom<AccountInformation<'a>> for ParsedAccountInformation<'a> {
+    impl<'a> TryFrom<AccountInformationPartial<'a>> for AccountInformation<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(v: AccountInformation<'a>) -> Result<Self, Self::Error> {
-            Ok(ParsedAccountInformation {
+        fn try_from(v: AccountInformationPartial<'a>) -> Result<Self, Self::Error> {
+            Ok(AccountInformation {
                 account_identifier: v.account_identifier.deserialize()?,
                 account_type: v.account_type,
                 backstop_provider: v.backstop_provider.deserialize()?,
@@ -343,7 +343,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    struct ParsedPosition<'a> {
+    struct Position<'a> {
         pub cost: Decimal,
         pub entry_price: Option<Decimal>,
         pub estimated_liquidation_price: Option<Decimal>,
@@ -366,11 +366,11 @@ mod tests {
         pub cumulative_sell_size: Option<Decimal>,
     }
 
-    impl<'a> TryFrom<Position<'a>> for ParsedPosition<'a> {
+    impl<'a> TryFrom<PositionPartial<'a>> for Position<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(p: Position<'a>) -> Result<Self, Self::Error> {
-            Ok(ParsedPosition {
+        fn try_from(p: PositionPartial<'a>) -> Result<Self, Self::Error> {
+            Ok(Position {
                 cost: p.cost.deserialize()?,
                 entry_price: p.entry_price.deserialize()?,
                 estimated_liquidation_price: p.estimated_liquidation_price.deserialize()?,
@@ -446,7 +446,7 @@ mod tests {
   }
 }
 "#;
-        let _: ParsedAccountInformation<'_> = GetAccountInformationResponse(json.as_bytes().into())
+        let _: AccountInformation<'_> = GetAccountInformationResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .try_into()
@@ -484,11 +484,11 @@ mod tests {
 }
 "#;
 
-        let _: Vec<ParsedPosition<'_>> = GetPositionsResponse(json.as_bytes().into())
+        let _: Vec<Position<'_>> = GetPositionsResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedPosition::try_from(p).unwrap())
+            .map(|p| Position::try_from(p).unwrap())
             .collect();
     }
 }

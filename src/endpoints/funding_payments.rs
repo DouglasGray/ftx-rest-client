@@ -52,12 +52,12 @@ impl<'a> Request<true> for GetFundingPayments<'a> {
 
 pub struct GetFundingPaymentsResponse(Bytes);
 
-response!(GetFundingPaymentsResponse, Vec<FundingPayment<'a>>);
+response!(GetFundingPaymentsResponse, Vec<FundingPaymentPartial<'a>>);
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct FundingPayment<'a> {
+pub struct FundingPaymentPartial<'a> {
     pub future: &'a str,
     #[serde(borrow)]
     pub id: Json<'a, u64>,
@@ -81,7 +81,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedFundingPayment<'a> {
+    pub struct FundingPayment<'a> {
         pub future: &'a str,
         pub id: u64,
         pub payment: Decimal,
@@ -89,11 +89,11 @@ mod tests {
         pub time: FtxDateTime,
     }
 
-    impl<'a> TryFrom<FundingPayment<'a>> for ParsedFundingPayment<'a> {
+    impl<'a> TryFrom<FundingPaymentPartial<'a>> for FundingPayment<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: FundingPayment<'a>) -> Result<Self, Self::Error> {
-            Ok(ParsedFundingPayment {
+        fn try_from(val: FundingPaymentPartial<'a>) -> Result<Self, Self::Error> {
+            Ok(FundingPayment {
                 future: val.future,
                 id: val.id.deserialize()?,
                 payment: val.payment.deserialize()?,
@@ -119,11 +119,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedFundingPayment<'_>> = GetFundingPaymentsResponse(json.as_bytes().into())
+        let _: Vec<FundingPayment<'_>> = GetFundingPaymentsResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedFundingPayment::try_from(p).unwrap())
+            .map(|p| FundingPayment::try_from(p).unwrap())
             .collect();
     }
 }

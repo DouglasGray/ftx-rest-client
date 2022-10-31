@@ -76,7 +76,7 @@ impl Request<false> for GetMarkets {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetMarketsResponse(Bytes);
 
-response!(GetMarketsResponse, Vec<Market<'a>>);
+response!(GetMarketsResponse, Vec<MarketPartial<'a>>);
 
 /// Retrieve info on a single market.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -101,7 +101,7 @@ impl<'a> Request<false> for GetMarket<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetMarketResponse(Bytes);
 
-response!(GetMarketResponse, Market<'a>);
+response!(GetMarketResponse, MarketPartial<'a>);
 
 /// Retrieve an orderbook snapshot for the provided market.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -131,7 +131,7 @@ impl<'a> Request<false> for GetOrderBook<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetOrderBookResponse(Bytes);
 
-response!(GetOrderBookResponse, OrderBook<'a>);
+response!(GetOrderBookResponse, OrderBookPartial<'a>);
 
 /// Retrieve trades in some time frame for the provided market.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -175,7 +175,7 @@ impl<'a> Request<false> for GetTrades<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetTradesResponse(Bytes);
 
-response!(GetTradesResponse, Vec<Trade<'a>>);
+response!(GetTradesResponse, Vec<TradePartial<'a>>);
 
 /// Retrieve historical prices in some time frame for the provided
 /// market.
@@ -219,12 +219,12 @@ impl<'a> Request<false> for GetCandles<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetCandlesResponse(Bytes);
 
-response!(GetCandlesResponse, Vec<Candle<'a>>);
+response!(GetCandlesResponse, Vec<CandlePartial<'a>>);
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct Market<'a> {
+pub struct MarketPartial<'a> {
     pub name: &'a str,
     pub underlying: Option<&'a str>,
     pub base_currency: Option<&'a str>,
@@ -278,7 +278,7 @@ pub struct Market<'a> {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct OrderBook<'a> {
+pub struct OrderBookPartial<'a> {
     #[serde(borrow)]
     pub asks: Vec<(Json<'a, Price>, Json<'a, Size>)>,
     #[serde(borrow)]
@@ -288,7 +288,7 @@ pub struct OrderBook<'a> {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct Trade<'a> {
+pub struct TradePartial<'a> {
     #[serde(borrow)]
     pub id: Json<'a, u64>,
     #[serde(borrow)]
@@ -306,7 +306,7 @@ pub struct Trade<'a> {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct Candle<'a> {
+pub struct CandlePartial<'a> {
     #[serde(borrow)]
     pub close: Json<'a, Decimal>,
     #[serde(borrow)]
@@ -335,7 +335,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedMarket<'a> {
+    pub struct Market<'a> {
         pub r#type: MarketType,
         pub name: &'a str,
         pub underlying: Option<&'a str>,
@@ -364,10 +364,10 @@ mod tests {
         pub is_etf_market: bool,
     }
 
-    impl<'a> TryFrom<Market<'a>> for ParsedMarket<'a> {
+    impl<'a> TryFrom<MarketPartial<'a>> for Market<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: Market<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: MarketPartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 name: val.name,
                 underlying: val.underlying,
@@ -403,15 +403,15 @@ mod tests {
     #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedOrderBook {
+    pub struct OrderBook {
         pub asks: Vec<(Price, Size)>,
         pub bids: Vec<(Price, Size)>,
     }
 
-    impl<'a> TryFrom<OrderBook<'a>> for ParsedOrderBook {
+    impl<'a> TryFrom<OrderBookPartial<'a>> for OrderBook {
         type Error = serde_json::Error;
 
-        fn try_from(val: OrderBook<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: OrderBookPartial<'a>) -> Result<Self, Self::Error> {
             let mut asks = Vec::with_capacity(val.asks.len());
             let mut bids = Vec::with_capacity(val.bids.len());
 
@@ -430,7 +430,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedTrade {
+    pub struct Trade {
         pub id: u64,
         pub liquidation: bool,
         pub price: Decimal,
@@ -439,10 +439,10 @@ mod tests {
         pub time: FtxDateTime,
     }
 
-    impl<'a> TryFrom<Trade<'a>> for ParsedTrade {
+    impl<'a> TryFrom<TradePartial<'a>> for Trade {
         type Error = serde_json::Error;
 
-        fn try_from(val: Trade<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: TradePartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 id: val.id.deserialize()?,
                 liquidation: val.liquidation.deserialize()?,
@@ -458,7 +458,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedCandle {
+    pub struct Candle {
         pub close: Decimal,
         pub high: Decimal,
         pub low: Decimal,
@@ -468,10 +468,10 @@ mod tests {
         pub time: UnixTimestamp,
     }
 
-    impl<'a> TryFrom<Candle<'a>> for ParsedCandle {
+    impl<'a> TryFrom<CandlePartial<'a>> for Candle {
         type Error = serde_json::Error;
 
-        fn try_from(val: Candle<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: CandlePartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 close: val.close.deserialize()?,
                 high: val.high.deserialize()?,
@@ -518,11 +518,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedMarket> = GetMarketsResponse(json.as_bytes().into())
+        let _: Vec<Market> = GetMarketsResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedMarket::try_from(p).unwrap())
+            .map(|p| Market::try_from(p).unwrap())
             .collect();
     }
 
@@ -558,7 +558,7 @@ mod tests {
     }
 }
 "#;
-        let _: ParsedMarket<'_> = GetMarketResponse(json.as_bytes().into())
+        let _: Market<'_> = GetMarketResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .try_into()
@@ -582,11 +582,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedTrade> = GetTradesResponse(json.as_bytes().into())
+        let _: Vec<Trade> = GetTradesResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedTrade::try_from(p).unwrap())
+            .map(|p| Trade::try_from(p).unwrap())
             .collect();
     }
 
@@ -608,11 +608,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedCandle> = GetCandlesResponse(json.as_bytes().into())
+        let _: Vec<Candle> = GetCandlesResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedCandle::try_from(p).unwrap())
+            .map(|p| Candle::try_from(p).unwrap())
             .collect();
     }
 }

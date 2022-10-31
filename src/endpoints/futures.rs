@@ -72,7 +72,7 @@ impl Request<false> for GetFutures {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFuturesResponse(Bytes);
 
-response!(GetFuturesResponse, Vec<Future<'a>>);
+response!(GetFuturesResponse, Vec<FuturePartial<'a>>);
 
 /// Retrieve information on a single future.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -97,7 +97,7 @@ impl<'a> Request<false> for GetFuture<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFutureResponse(Bytes);
 
-response!(GetFutureResponse, Future<'a>);
+response!(GetFutureResponse, FuturePartial<'a>);
 
 /// Retrieve future statistics, including predicted funding rate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -122,7 +122,7 @@ impl<'a> Request<false> for GetFutureStats<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFutureStatsResponse(Bytes);
 
-response!(GetFutureStatsResponse, FutureStats<'a>);
+response!(GetFutureStatsResponse, FutureStatsPartial<'a>);
 
 /// Retrieve historical funding rates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -165,7 +165,7 @@ impl<'a> Request<false> for GetFundingRates<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFundingRatesResponse(Bytes);
 
-response!(GetFundingRatesResponse, Vec<FundingRate<'a>>);
+response!(GetFundingRatesResponse, Vec<FundingRatePartial<'a>>);
 
 /// Retrieve information on all expired futures.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -184,12 +184,12 @@ impl Request<false> for GetExpiredFutures {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetExpiredFuturesResponse(Bytes);
 
-response!(GetExpiredFuturesResponse, Vec<ExpiredFuture<'a>>);
+response!(GetExpiredFuturesResponse, Vec<ExpiredFuturePartial<'a>>);
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct Future<'a> {
+pub struct FuturePartial<'a> {
     pub name: &'a str,
     pub underlying: &'a str,
     pub description: &'a str,
@@ -254,7 +254,7 @@ pub struct Future<'a> {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct FutureStats<'a> {
+pub struct FutureStatsPartial<'a> {
     #[serde(borrow)]
     pub volume: Json<'a, Decimal>,
     #[serde(borrow)]
@@ -274,7 +274,7 @@ pub struct FutureStats<'a> {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct FundingRate<'a> {
+pub struct FundingRatePartial<'a> {
     pub future: &'a str,
     #[serde(borrow)]
     pub rate: Json<'a, Decimal>,
@@ -285,7 +285,7 @@ pub struct FundingRate<'a> {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct ExpiredFuture<'a> {
+pub struct ExpiredFuturePartial<'a> {
     pub name: &'a str,
     pub underlying: &'a str,
     pub description: &'a str,
@@ -345,7 +345,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    struct ParsedFuture<'a> {
+    struct Future<'a> {
         pub name: &'a str,
         pub underlying: &'a str,
         pub description: &'a str,
@@ -380,10 +380,10 @@ mod tests {
         pub move_start: Option<FtxDateTime>,
     }
 
-    impl<'a> TryFrom<Future<'a>> for ParsedFuture<'a> {
+    impl<'a> TryFrom<FuturePartial<'a>> for Future<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: Future<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: FuturePartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 name: val.name,
                 underlying: val.underlying,
@@ -425,7 +425,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    struct ParsedFutureStats {
+    struct FutureStats {
         pub volume: Decimal,
         pub next_funding_rate: Option<Decimal>,
         pub next_funding_time: FtxDateTime,
@@ -435,10 +435,10 @@ mod tests {
         pub open_interest: Decimal,
     }
 
-    impl<'a> TryFrom<FutureStats<'a>> for ParsedFutureStats {
+    impl<'a> TryFrom<FutureStatsPartial<'a>> for FutureStats {
         type Error = serde_json::Error;
 
-        fn try_from(val: FutureStats<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: FutureStatsPartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 volume: val.volume.deserialize()?,
                 next_funding_rate: val.next_funding_rate.deserialize()?,
@@ -455,16 +455,16 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedFundingRate<'a> {
+    pub struct FundingRate<'a> {
         pub future: &'a str,
         pub rate: Decimal,
         pub time: FtxDateTime,
     }
 
-    impl<'a> TryFrom<FundingRate<'a>> for ParsedFundingRate<'a> {
+    impl<'a> TryFrom<FundingRatePartial<'a>> for FundingRate<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: FundingRate<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: FundingRatePartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 future: val.future,
                 rate: val.rate.deserialize()?,
@@ -477,7 +477,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedExpiredFuture<'a> {
+    pub struct ExpiredFuture<'a> {
         pub name: &'a str,
         pub underlying: &'a str,
         pub description: &'a str,
@@ -505,10 +505,10 @@ mod tests {
         pub move_start: Option<FtxDateTime>,
     }
 
-    impl<'a> TryFrom<ExpiredFuture<'a>> for ParsedExpiredFuture<'a> {
+    impl<'a> TryFrom<ExpiredFuturePartial<'a>> for ExpiredFuture<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: ExpiredFuture<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: ExpiredFuturePartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 name: val.name,
                 underlying: val.underlying,
@@ -582,11 +582,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedFuture<'_>> = GetFuturesResponse(json.as_bytes().into())
+        let _: Vec<Future<'_>> = GetFuturesResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedFuture::try_from(p).unwrap())
+            .map(|p| Future::try_from(p).unwrap())
             .collect();
     }
 
@@ -632,7 +632,7 @@ mod tests {
 }
 "#;
 
-        let _: ParsedFuture<'_> = GetFutureResponse(json.as_bytes().into())
+        let _: Future<'_> = GetFutureResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .try_into()
@@ -655,7 +655,7 @@ mod tests {
   }
 }
 "#;
-        let _: ParsedFutureStats = GetFutureStatsResponse(json.as_bytes().into())
+        let _: FutureStats = GetFutureStatsResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .try_into()
@@ -676,11 +676,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedFundingRate<'_>> = GetFundingRatesResponse(json.as_bytes().into())
+        let _: Vec<FundingRate<'_>> = GetFundingRatesResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedFundingRate::try_from(p).unwrap())
+            .map(|p| FundingRate::try_from(p).unwrap())
             .collect();
     }
 
@@ -720,11 +720,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedExpiredFuture<'_>> = GetExpiredFuturesResponse(json.as_bytes().into())
+        let _: Vec<ExpiredFuture<'_>> = GetExpiredFuturesResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedExpiredFuture::try_from(p).unwrap())
+            .map(|p| ExpiredFuture::try_from(p).unwrap())
             .collect();
     }
 }

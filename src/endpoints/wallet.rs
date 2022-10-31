@@ -25,7 +25,7 @@ impl Request<true> for GetCoins {
 
 pub struct GetCoinsResponse(Bytes);
 
-response!(GetCoinsResponse, Vec<Coin<'a>>);
+response!(GetCoinsResponse, Vec<CoinPartial<'a>>);
 
 /// Retrieve coin balances.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -43,7 +43,7 @@ impl Request<true> for GetBalances {
 
 pub struct GetBalancesResponse(Bytes);
 
-response!(GetBalancesResponse, Vec<Balance<'a>>);
+response!(GetBalancesResponse, Vec<BalancePartial<'a>>);
 
 /// Retrieve coin balances for all account.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -63,13 +63,13 @@ pub struct GetAllBalancesResponse(Bytes);
 
 response!(
     GetAllBalancesResponse,
-    HashMap<AccountName<'a>, Vec<Balance<'a>>>
+    HashMap<AccountName<'a>, Vec<BalancePartial<'a>>>
 );
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct Coin<'a> {
+pub struct CoinPartial<'a> {
     pub id: &'a str,
     pub name: &'a str,
     #[serde(borrow)]
@@ -119,7 +119,7 @@ pub struct Coin<'a> {
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct Balance<'a> {
+pub struct BalancePartial<'a> {
     pub coin: &'a str,
     #[serde(borrow)]
     pub free: Json<'a, Decimal>,
@@ -147,7 +147,7 @@ mod tests {
     #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedCoin<'a> {
+    pub struct Coin<'a> {
         pub id: &'a str,
         pub name: &'a str,
         pub fiat: bool,
@@ -177,10 +177,10 @@ mod tests {
         index_price: f64,
     }
 
-    impl<'a> TryFrom<Coin<'a>> for ParsedCoin<'a> {
+    impl<'a> TryFrom<CoinPartial<'a>> for Coin<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: Coin<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: CoinPartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 id: val.id,
                 name: val.name,
@@ -215,7 +215,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ParsedBalance<'a> {
+    pub struct Balance<'a> {
         pub coin: &'a str,
         pub free: Decimal,
         pub spot_borrow: Decimal,
@@ -225,10 +225,10 @@ mod tests {
         pub available_for_withdrawal: Decimal,
     }
 
-    impl<'a> TryFrom<Balance<'a>> for ParsedBalance<'a> {
+    impl<'a> TryFrom<BalancePartial<'a>> for Balance<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: Balance<'a>) -> Result<Self, Self::Error> {
+        fn try_from(val: BalancePartial<'a>) -> Result<Self, Self::Error> {
             Ok(Self {
                 coin: val.coin,
                 free: val.free.deserialize()?,
@@ -276,11 +276,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedCoin<'_>> = GetCoinsResponse(json.as_bytes().into())
+        let _: Vec<Coin<'_>> = GetCoinsResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedCoin::try_from(p).unwrap())
+            .map(|p| Coin::try_from(p).unwrap())
             .collect();
     }
 
@@ -302,11 +302,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedBalance<'_>> = GetBalancesResponse(json.as_bytes().into())
+        let _: Vec<Balance<'_>> = GetBalancesResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedBalance::try_from(p).unwrap())
+            .map(|p| Balance::try_from(p).unwrap())
             .collect();
     }
 
@@ -350,7 +350,7 @@ mod tests {
   }
 }
 "#;
-        let _: HashMap<AccountName<'_>, Vec<ParsedBalance<'_>>> =
+        let _: HashMap<AccountName<'_>, Vec<Balance<'_>>> =
             GetAllBalancesResponse(json.as_bytes().into())
                 .deserialize_partial()
                 .unwrap()

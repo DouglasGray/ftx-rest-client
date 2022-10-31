@@ -79,12 +79,12 @@ impl<'a> Request<true> for GetFills<'a> {
 
 pub struct GetFillsResponse(Bytes);
 
-response!(GetFillsResponse, Vec<Fill<'a>>);
+response!(GetFillsResponse, Vec<FillPartial<'a>>);
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct Fill<'a> {
+pub struct FillPartial<'a> {
     pub market: &'a str,
     pub future: Option<&'a str>,
     #[serde(borrow)]
@@ -126,7 +126,7 @@ mod tests {
     #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
     #[serde(rename_all = "camelCase")]
     #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    struct ParsedFill<'a> {
+    struct Fill<'a> {
         pub market: &'a str,
         pub future: Option<&'a str>,
         pub side: Side,
@@ -145,11 +145,11 @@ mod tests {
         pub fee_rate: Decimal,
     }
 
-    impl<'a> TryFrom<Fill<'a>> for ParsedFill<'a> {
+    impl<'a> TryFrom<FillPartial<'a>> for Fill<'a> {
         type Error = serde_json::Error;
 
-        fn try_from(val: Fill<'a>) -> Result<Self, Self::Error> {
-            Ok(ParsedFill {
+        fn try_from(val: FillPartial<'a>) -> Result<Self, Self::Error> {
+            Ok(Fill {
                 market: val.market,
                 future: val.future,
                 side: val.side.deserialize()?,
@@ -197,11 +197,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ParsedFill<'_>> = GetFillsResponse(json.as_bytes().into())
+        let _: Vec<Fill<'_>> = GetFillsResponse(json.as_bytes().into())
             .deserialize_partial()
             .unwrap()
             .into_iter()
-            .map(|p| ParsedFill::try_from(p).unwrap())
+            .map(|p| Fill::try_from(p).unwrap())
             .collect();
     }
 }
