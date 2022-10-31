@@ -94,14 +94,6 @@ impl fmt::Display for FtxResponseDeserializationError {
 
 impl StdError for FtxResponseDeserializationError {}
 
-// fn float_ts_to_unix_ts<'de, D>(deserializer: D) -> Result<UnixTimestamp, D::Error>
-// where
-//     D: Deserializer<'de>,
-// {
-//     let ts: f64 = Deserialize::deserialize(deserializer)?;
-//     ts.try_into().map_err(de::Error::custom)
-// }
-
 mod macros {
     macro_rules! response {
         ($res:ty, $data:ty) => {
