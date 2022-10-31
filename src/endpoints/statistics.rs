@@ -108,7 +108,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedLatencyStats> = GetLatencyStatisticsResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedLatencyStats::try_from(p).unwrap())

@@ -583,7 +583,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedFuture<'_>> = GetFuturesResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedFuture::try_from(p).unwrap())
@@ -633,7 +633,7 @@ mod tests {
 "#;
 
         let _: ParsedFuture<'_> = GetFutureResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .try_into()
             .unwrap();
@@ -656,7 +656,7 @@ mod tests {
 }
 "#;
         let _: ParsedFutureStats = GetFutureStatsResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .try_into()
             .unwrap();
@@ -677,7 +677,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedFundingRate<'_>> = GetFundingRatesResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedFundingRate::try_from(p).unwrap())
@@ -721,7 +721,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedExpiredFuture<'_>> = GetExpiredFuturesResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedExpiredFuture::try_from(p).unwrap())

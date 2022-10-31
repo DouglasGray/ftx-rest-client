@@ -205,8 +205,9 @@ mod tests {
   }
 }
 "#;
-        let _: HashMap<Underlying<'_>, Decimal> =
-            GetWeightsResponse(json.as_bytes().into()).parse().unwrap();
+        let _: HashMap<Underlying<'_>, Decimal> = GetWeightsResponse(json.as_bytes().into())
+            .deserialize_partial()
+            .unwrap();
     }
 
     #[test]
@@ -228,7 +229,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedCandle> = GetCandlesResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedCandle::try_from(p).unwrap())
@@ -249,7 +250,7 @@ mod tests {
 "#;
         let _: Vec<(Exchange<'_>, BaseCurrency<'_>, QuoteCurrency<'_>)> =
             GetConstituentsResponse(json.as_bytes().into())
-                .parse()
+                .deserialize_partial()
                 .unwrap();
     }
 }

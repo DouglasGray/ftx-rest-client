@@ -19,6 +19,6 @@ async fn get_latency_statistics() {
         },
     )
     .await
-    .parse()
+    .deserialize_partial()
     .unwrap();
 }

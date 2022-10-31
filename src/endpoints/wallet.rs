@@ -277,7 +277,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedCoin<'_>> = GetCoinsResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedCoin::try_from(p).unwrap())
@@ -303,7 +303,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedBalance<'_>> = GetBalancesResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedBalance::try_from(p).unwrap())
@@ -352,7 +352,7 @@ mod tests {
 "#;
         let _: HashMap<AccountName<'_>, Vec<ParsedBalance<'_>>> =
             GetAllBalancesResponse(json.as_bytes().into())
-                .parse()
+                .deserialize_partial()
                 .unwrap()
                 .into_iter()
                 .map(|(name, balances)| {

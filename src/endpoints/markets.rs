@@ -519,7 +519,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedMarket> = GetMarketsResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedMarket::try_from(p).unwrap())
@@ -559,7 +559,7 @@ mod tests {
 }
 "#;
         let _: ParsedMarket<'_> = GetMarketResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .try_into()
             .unwrap();
@@ -583,7 +583,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedTrade> = GetTradesResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedTrade::try_from(p).unwrap())
@@ -609,7 +609,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedCandle> = GetCandlesResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedCandle::try_from(p).unwrap())

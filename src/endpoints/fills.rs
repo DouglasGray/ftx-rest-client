@@ -198,7 +198,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedFill<'_>> = GetFillsResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedFill::try_from(p).unwrap())

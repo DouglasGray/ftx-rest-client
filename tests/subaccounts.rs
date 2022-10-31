@@ -25,7 +25,7 @@ async fn get_subaccounts() {
 
     common::make_auth_request(&client, &GetSubaccounts)
         .await
-        .parse()
+        .deserialize_partial()
         .unwrap();
 }
 
@@ -40,7 +40,7 @@ async fn get_subaccount_balances() {
 
     common::make_auth_request(&client, &GetSubaccountBalances { nickname: "main" })
         .await
-        .parse()
+        .deserialize_partial()
         .unwrap();
 }
 
@@ -58,7 +58,7 @@ async fn create_subaccount_then_change_its_name_then_delete_it() {
 
     common::make_auth_request(&client, &CreateSubaccount { nickname: NICKNAME })
         .await
-        .parse()
+        .deserialize_partial()
         .unwrap();
 
     // Put test in separate task so we can easily clean up the
@@ -74,7 +74,7 @@ async fn create_subaccount_then_change_its_name_then_delete_it() {
             },
         )
         .await
-        .parse()
+        .deserialize_partial()
         .unwrap();
 
         common::make_auth_request(
@@ -84,7 +84,7 @@ async fn create_subaccount_then_change_its_name_then_delete_it() {
             },
         )
         .await
-        .parse()
+        .deserialize_partial()
         .unwrap();
     })
     .await;
@@ -94,7 +94,7 @@ async fn create_subaccount_then_change_its_name_then_delete_it() {
     if res.is_err() {
         common::make_auth_request(&client, &DeleteSubaccount { nickname: NICKNAME })
             .await
-            .parse()
+            .deserialize_partial()
             .unwrap();
     }
 
@@ -115,7 +115,7 @@ async fn try_transfer_one_usd_from_main_to_subaccount_then_back() {
     let should_transfer =
         common::make_auth_request(&client, &GetSubaccountBalances { nickname: "main" })
             .await
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .iter()
             .any(|b| b.coin == "USD" && b.free >= NonNegativeDecimal::from(1u64));
@@ -123,7 +123,7 @@ async fn try_transfer_one_usd_from_main_to_subaccount_then_back() {
     if should_transfer {
         common::make_auth_request(&client, &CreateSubaccount { nickname: NICKNAME })
             .await
-            .parse()
+            .deserialize_partial()
             .unwrap();
 
         // Put test in separate task so we can easily clean up the
@@ -141,7 +141,7 @@ async fn try_transfer_one_usd_from_main_to_subaccount_then_back() {
                 },
             )
             .await
-            .parse()
+            .deserialize_partial()
             .unwrap();
 
             common::make_auth_request(
@@ -154,14 +154,14 @@ async fn try_transfer_one_usd_from_main_to_subaccount_then_back() {
                 },
             )
             .await
-            .parse()
+            .deserialize_partial()
             .unwrap();
         })
         .await;
 
         common::make_auth_request(&client, &DeleteSubaccount { nickname: NICKNAME })
             .await
-            .parse()
+            .deserialize_partial()
             .unwrap();
 
         res.unwrap()

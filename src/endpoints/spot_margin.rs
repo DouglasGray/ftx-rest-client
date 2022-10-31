@@ -283,7 +283,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedBorrowRate> = GetBorrowRatesResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedBorrowRate::try_from(p).unwrap())
@@ -304,7 +304,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedBorrowAmount> = GetDailyBorrowedAmountsResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedBorrowAmount::try_from(p).unwrap())
@@ -335,7 +335,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedBorrowMarket<'_>> = GetBorrowMarketsResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedBorrowMarket::try_from(p).unwrap())
@@ -360,7 +360,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedBorrowPayment<'_>> = GetBorrowHistoryResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedBorrowPayment::try_from(p).unwrap())

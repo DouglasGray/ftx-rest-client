@@ -543,7 +543,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedOrder> = GetOpenOrdersResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedOrder::try_from(p).unwrap())
@@ -580,7 +580,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedOrder> = GetOpenOrdersResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedOrder::try_from(p).unwrap())
@@ -612,7 +612,7 @@ mod tests {
 }
 "#;
         let _: OrderPlaced<'_> = PlaceOrderResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .try_into()
             .unwrap();
@@ -643,7 +643,7 @@ mod tests {
 }
 "#;
         let _: OrderPlaced<'_> = EditOrderResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .try_into()
             .unwrap();
@@ -676,7 +676,7 @@ mod tests {
 }
 "#;
         let _: ParsedOrder<'_> = GetOrderStatusResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .try_into()
             .unwrap();
@@ -690,7 +690,9 @@ mod tests {
   "result": "Order queued for cancelation"
 }
 "#;
-        let _: CancelAckMsg<'_> = CancelOrderResponse(json.as_bytes().into()).parse().unwrap();
+        let _: CancelAckMsg<'_> = CancelOrderResponse(json.as_bytes().into())
+            .deserialize_partial()
+            .unwrap();
     }
 
     #[test]
@@ -702,7 +704,7 @@ mod tests {
 }
 "#;
         let _: CancelAckMsg<'_> = CancelAllOrdersResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap();
     }
 }

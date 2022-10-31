@@ -335,7 +335,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedSubaccount<'_>> = GetSubaccountsResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedSubaccount::try_from(p).unwrap())
@@ -357,7 +357,7 @@ mod tests {
 }
 "#;
         let _: ParsedSubaccount<'_> = CreateSubaccountResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .try_into()
             .unwrap();
@@ -372,7 +372,7 @@ mod tests {
 }
 "#;
         let _: () = ChangeSubaccountNameResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap();
     }
 
@@ -385,7 +385,7 @@ mod tests {
 }
 "#;
         let _: () = DeleteSubaccountResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap();
     }
 
@@ -409,7 +409,7 @@ mod tests {
 "#;
         let _: Vec<ParsedSubaccountBalance<'_>> =
             GetSubaccountBalancesResponse(json.as_bytes().into())
-                .parse()
+                .deserialize_partial()
                 .unwrap()
                 .into_iter()
                 .map(|p| ParsedSubaccountBalance::try_from(p).unwrap())
@@ -433,7 +433,7 @@ mod tests {
 "#;
         let _: ParsedTransferDetails<'_> =
             TransferBetweenSubaccountsResponse(json.as_bytes().into())
-                .parse()
+                .deserialize_partial()
                 .unwrap()
                 .try_into()
                 .unwrap();

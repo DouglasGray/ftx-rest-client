@@ -22,6 +22,6 @@ async fn get_fills() {
         },
     )
     .await
-    .parse()
+    .deserialize_partial()
     .unwrap();
 }

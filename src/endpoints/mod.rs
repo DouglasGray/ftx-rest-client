@@ -120,7 +120,7 @@ mod macros {
             impl crate::private::Sealed for $res {}
 
             impl crate::Response for $res {
-                type Data<'a> = $data;
+                type PartialData<'a> = $data;
             }
         };
     }

@@ -120,7 +120,7 @@ mod tests {
 }
 "#;
         let _: Vec<ParsedFundingPayment<'_>> = GetFundingPaymentsResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedFundingPayment::try_from(p).unwrap())

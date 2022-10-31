@@ -447,7 +447,7 @@ mod tests {
 }
 "#;
         let _: ParsedAccountInformation<'_> = GetAccountInformationResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .try_into()
             .unwrap();
@@ -485,7 +485,7 @@ mod tests {
 "#;
 
         let _: Vec<ParsedPosition<'_>> = GetPositionsResponse(json.as_bytes().into())
-            .parse()
+            .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ParsedPosition::try_from(p).unwrap())
