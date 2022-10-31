@@ -6,9 +6,9 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{DateTimeStr, NonNegativeDecimal, PositiveDecimal, Price, UnixTimestamp},
+    data::{FtxDateTime, UnixTimestamp},
     private::Sealed,
-    Request,
+    Json, OptJson, Request,
 };
 
 use super::macros::response;
@@ -186,119 +186,358 @@ pub struct GetExpiredFuturesResponse(Bytes);
 
 response!(GetExpiredFuturesResponse, Vec<ExpiredFuture<'a>>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct Future<'a> {
-    #[serde(borrow)]
     pub name: &'a str,
-    #[serde(borrow)]
     pub underlying: &'a str,
-    #[serde(borrow)]
     pub description: &'a str,
-    #[serde(borrow)]
     pub underlying_description: &'a str,
-    #[serde(borrow)]
     pub expiry_description: &'a str,
-    pub r#type: FutureType,
-    pub group: FutureGroup,
     #[serde(borrow)]
-    pub expiry: Option<DateTimeStr<'a>>,
-    pub perpetual: bool,
-    pub expired: bool,
-    pub enabled: bool,
-    pub post_only: bool,
-    pub price_increment: PositiveDecimal,
-    pub size_increment: PositiveDecimal,
-    pub last: Option<Price>,
-    pub bid: Option<Price>,
-    pub ask: Option<Price>,
-    pub index: Option<Price>,
-    pub mark: Option<Price>,
-    pub imf_factor: PositiveDecimal,
-    pub lower_bound: Option<PositiveDecimal>,
-    pub upper_bound: Option<PositiveDecimal>,
-    pub margin_price: Option<PositiveDecimal>,
-    pub position_limit_weight: PositiveDecimal,
-    pub change_1h: Option<Decimal>,
-    pub change_24h: Option<Decimal>,
-    pub change_bod: Option<Decimal>,
-    pub volume_usd_24h: NonNegativeDecimal,
-    pub volume: NonNegativeDecimal,
-    pub open_interest: NonNegativeDecimal,
-    pub open_interest_usd: NonNegativeDecimal,
+    pub r#type: Json<'a, FutureType>,
     #[serde(borrow)]
-    pub move_start: Option<DateTimeStr<'a>>,
+    pub group: Json<'a, FutureGroup>,
+    #[serde(borrow)]
+    pub expiry: OptJson<'a, FtxDateTime>,
+    #[serde(borrow)]
+    pub perpetual: Json<'a, bool>,
+    #[serde(borrow)]
+    pub expired: Json<'a, bool>,
+    #[serde(borrow)]
+    pub enabled: Json<'a, bool>,
+    #[serde(borrow)]
+    pub post_only: Json<'a, bool>,
+    #[serde(borrow)]
+    pub price_increment: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub size_increment: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub last: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub bid: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub ask: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub index: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub mark: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub imf_factor: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub lower_bound: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub upper_bound: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub margin_price: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub position_limit_weight: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub change_1h: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub change_24h: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub change_bod: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub volume_usd_24h: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub volume: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub open_interest: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub open_interest_usd: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub move_start: OptJson<'a, FtxDateTime>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct FutureStats<'a> {
-    pub volume: NonNegativeDecimal,
-    pub next_funding_rate: Option<Decimal>,
     #[serde(borrow)]
-    pub next_funding_time: DateTimeStr<'a>,
-    pub expiration_price: Option<Price>,
-    pub predicted_expiration_price: Option<Price>,
-    pub strike_price: Option<Price>,
-    pub open_interest: NonNegativeDecimal,
+    pub volume: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub next_funding_rate: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub next_funding_time: Json<'a, FtxDateTime>,
+    #[serde(borrow)]
+    pub expiration_price: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub predicted_expiration_price: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub strike_price: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub open_interest: Json<'a, Decimal>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct FundingRate<'a> {
-    #[serde(borrow)]
     pub future: &'a str,
-    pub rate: Decimal,
     #[serde(borrow)]
-    pub time: DateTimeStr<'a>,
+    pub rate: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub time: Json<'a, FtxDateTime>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct ExpiredFuture<'a> {
-    #[serde(borrow)]
     pub name: &'a str,
-    #[serde(borrow)]
     pub underlying: &'a str,
-    #[serde(borrow)]
     pub description: &'a str,
-    #[serde(borrow)]
     pub underlying_description: &'a str,
-    #[serde(borrow)]
     pub expiry_description: &'a str,
-    pub r#type: FutureType,
-    pub group: FutureGroup,
     #[serde(borrow)]
-    pub expiry: Option<DateTimeStr<'a>>,
-    pub perpetual: bool,
-    pub expired: bool,
-    pub enabled: bool,
-    pub post_only: bool,
-    pub price_increment: PositiveDecimal,
-    pub size_increment: PositiveDecimal,
-    pub last: Option<Price>,
-    pub bid: Option<Price>,
-    pub ask: Option<Price>,
-    pub index: Option<Price>,
-    pub mark: Option<Price>,
-    pub imf_factor: PositiveDecimal,
-    pub lower_bound: Option<PositiveDecimal>,
-    pub upper_bound: Option<PositiveDecimal>,
-    pub margin_price: Option<PositiveDecimal>,
-    pub position_limit_weight: PositiveDecimal,
+    pub r#type: Json<'a, FutureType>,
     #[serde(borrow)]
-    pub move_start: Option<DateTimeStr<'a>>,
+    pub group: Json<'a, FutureGroup>,
+    #[serde(borrow)]
+    pub expiry: OptJson<'a, FtxDateTime>,
+    #[serde(borrow)]
+    pub perpetual: Json<'a, bool>,
+    #[serde(borrow)]
+    pub expired: Json<'a, bool>,
+    #[serde(borrow)]
+    pub enabled: Json<'a, bool>,
+    #[serde(borrow)]
+    pub post_only: Json<'a, bool>,
+    #[serde(borrow)]
+    pub price_increment: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub size_increment: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub last: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub bid: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub ask: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub index: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub mark: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub imf_factor: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub lower_bound: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub upper_bound: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub margin_price: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub position_limit_weight: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub move_start: OptJson<'a, FtxDateTime>,
 }
 
 #[cfg(test)]
 mod tests {
+    use std::convert::{TryFrom, TryInto};
+
     use crate::Response;
 
     use super::*;
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    struct ParsedFuture<'a> {
+        pub name: &'a str,
+        pub underlying: &'a str,
+        pub description: &'a str,
+        pub underlying_description: &'a str,
+        pub expiry_description: &'a str,
+        pub r#type: FutureType,
+        pub group: FutureGroup,
+        pub expiry: Option<FtxDateTime>,
+        pub perpetual: bool,
+        pub expired: bool,
+        pub enabled: bool,
+        pub post_only: bool,
+        pub price_increment: Decimal,
+        pub size_increment: Decimal,
+        pub last: Option<Decimal>,
+        pub bid: Option<Decimal>,
+        pub ask: Option<Decimal>,
+        pub index: Option<Decimal>,
+        pub mark: Option<Decimal>,
+        pub imf_factor: Decimal,
+        pub lower_bound: Option<Decimal>,
+        pub upper_bound: Option<Decimal>,
+        pub margin_price: Option<Decimal>,
+        pub position_limit_weight: Decimal,
+        pub change_1h: Option<Decimal>,
+        pub change_24h: Option<Decimal>,
+        pub change_bod: Option<Decimal>,
+        pub volume_usd_24h: Decimal,
+        pub volume: Decimal,
+        pub open_interest: Decimal,
+        pub open_interest_usd: Decimal,
+        pub move_start: Option<FtxDateTime>,
+    }
+
+    impl<'a> TryFrom<Future<'a>> for ParsedFuture<'a> {
+        type Error = serde_json::Error;
+
+        fn try_from(val: Future<'a>) -> Result<Self, Self::Error> {
+            Ok(Self {
+                name: val.name,
+                underlying: val.underlying,
+                description: val.description,
+                underlying_description: val.underlying_description,
+                expiry_description: val.expiry_description,
+                r#type: val.r#type.deserialize()?,
+                group: val.group.deserialize()?,
+                expiry: val.expiry.deserialize()?,
+                perpetual: val.perpetual.deserialize()?,
+                expired: val.expired.deserialize()?,
+                enabled: val.enabled.deserialize()?,
+                post_only: val.post_only.deserialize()?,
+                price_increment: val.price_increment.deserialize()?,
+                size_increment: val.size_increment.deserialize()?,
+                last: val.last.deserialize()?,
+                bid: val.bid.deserialize()?,
+                ask: val.ask.deserialize()?,
+                index: val.index.deserialize()?,
+                mark: val.mark.deserialize()?,
+                imf_factor: val.imf_factor.deserialize()?,
+                lower_bound: val.lower_bound.deserialize()?,
+                upper_bound: val.upper_bound.deserialize()?,
+                margin_price: val.margin_price.deserialize()?,
+                position_limit_weight: val.position_limit_weight.deserialize()?,
+                change_1h: val.change_1h.deserialize()?,
+                change_24h: val.change_24h.deserialize()?,
+                change_bod: val.change_bod.deserialize()?,
+                volume_usd_24h: val.volume_usd_24h.deserialize()?,
+                volume: val.volume.deserialize()?,
+                open_interest: val.open_interest.deserialize()?,
+                open_interest_usd: val.open_interest_usd.deserialize()?,
+                move_start: val.move_start.deserialize()?,
+            })
+        }
+    }
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    struct ParsedFutureStats {
+        pub volume: Decimal,
+        pub next_funding_rate: Option<Decimal>,
+        pub next_funding_time: FtxDateTime,
+        pub expiration_price: Option<Decimal>,
+        pub predicted_expiration_price: Option<Decimal>,
+        pub strike_price: Option<Decimal>,
+        pub open_interest: Decimal,
+    }
+
+    impl<'a> TryFrom<FutureStats<'a>> for ParsedFutureStats {
+        type Error = serde_json::Error;
+
+        fn try_from(val: FutureStats<'a>) -> Result<Self, Self::Error> {
+            Ok(Self {
+                volume: val.volume.deserialize()?,
+                next_funding_rate: val.next_funding_rate.deserialize()?,
+                next_funding_time: val.next_funding_time.deserialize()?,
+                expiration_price: val.expiration_price.deserialize()?,
+                predicted_expiration_price: val.predicted_expiration_price.deserialize()?,
+                strike_price: val.strike_price.deserialize()?,
+                open_interest: val.open_interest.deserialize()?,
+            })
+        }
+    }
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    pub struct ParsedFundingRate<'a> {
+        pub future: &'a str,
+        pub rate: Decimal,
+        pub time: FtxDateTime,
+    }
+
+    impl<'a> TryFrom<FundingRate<'a>> for ParsedFundingRate<'a> {
+        type Error = serde_json::Error;
+
+        fn try_from(val: FundingRate<'a>) -> Result<Self, Self::Error> {
+            Ok(Self {
+                future: val.future,
+                rate: val.rate.deserialize()?,
+                time: val.time.deserialize()?,
+            })
+        }
+    }
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    pub struct ParsedExpiredFuture<'a> {
+        pub name: &'a str,
+        pub underlying: &'a str,
+        pub description: &'a str,
+        pub underlying_description: &'a str,
+        pub expiry_description: &'a str,
+        pub r#type: FutureType,
+        pub group: FutureGroup,
+        pub expiry: Option<FtxDateTime>,
+        pub perpetual: bool,
+        pub expired: bool,
+        pub enabled: bool,
+        pub post_only: bool,
+        pub price_increment: Decimal,
+        pub size_increment: Decimal,
+        pub last: Option<Decimal>,
+        pub bid: Option<Decimal>,
+        pub ask: Option<Decimal>,
+        pub index: Option<Decimal>,
+        pub mark: Option<Decimal>,
+        pub imf_factor: Decimal,
+        pub lower_bound: Option<Decimal>,
+        pub upper_bound: Option<Decimal>,
+        pub margin_price: Option<Decimal>,
+        pub position_limit_weight: Decimal,
+        pub move_start: Option<FtxDateTime>,
+    }
+
+    impl<'a> TryFrom<ExpiredFuture<'a>> for ParsedExpiredFuture<'a> {
+        type Error = serde_json::Error;
+
+        fn try_from(val: ExpiredFuture<'a>) -> Result<Self, Self::Error> {
+            Ok(Self {
+                name: val.name,
+                underlying: val.underlying,
+                description: val.description,
+                underlying_description: val.underlying_description,
+                expiry_description: val.expiry_description,
+                r#type: val.r#type.deserialize()?,
+                group: val.group.deserialize()?,
+                expiry: val.expiry.deserialize()?,
+                perpetual: val.perpetual.deserialize()?,
+                expired: val.expired.deserialize()?,
+                enabled: val.enabled.deserialize()?,
+                post_only: val.post_only.deserialize()?,
+                price_increment: val.price_increment.deserialize()?,
+                size_increment: val.size_increment.deserialize()?,
+                last: val.last.deserialize()?,
+                bid: val.bid.deserialize()?,
+                ask: val.ask.deserialize()?,
+                index: val.index.deserialize()?,
+                mark: val.mark.deserialize()?,
+                imf_factor: val.imf_factor.deserialize()?,
+                lower_bound: val.lower_bound.deserialize()?,
+                upper_bound: val.upper_bound.deserialize()?,
+                margin_price: val.margin_price.deserialize()?,
+                position_limit_weight: val.position_limit_weight.deserialize()?,
+                move_start: val.move_start.deserialize()?,
+            })
+        }
+    }
 
     #[test]
     fn get_futures() {
@@ -343,7 +582,12 @@ mod tests {
   ]
 }
 "#;
-        GetFuturesResponse(json.as_bytes().into()).parse().unwrap();
+        let _: Vec<ParsedFuture<'_>> = GetFuturesResponse(json.as_bytes().into())
+            .parse()
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedFuture::try_from(p).unwrap())
+            .collect();
     }
 
     #[test]
@@ -387,7 +631,12 @@ mod tests {
     }
 }
 "#;
-        GetFutureResponse(json.as_bytes().into()).parse().unwrap();
+
+        let _: ParsedFuture<'_> = GetFutureResponse(json.as_bytes().into())
+            .parse()
+            .unwrap()
+            .try_into()
+            .unwrap();
     }
 
     #[test]
@@ -406,8 +655,10 @@ mod tests {
   }
 }
 "#;
-        GetFutureStatsResponse(json.as_bytes().into())
+        let _: ParsedFutureStats = GetFutureStatsResponse(json.as_bytes().into())
             .parse()
+            .unwrap()
+            .try_into()
             .unwrap();
     }
 
@@ -425,9 +676,12 @@ mod tests {
   ]
 }
 "#;
-        GetFundingRatesResponse(json.as_bytes().into())
+        let _: Vec<ParsedFundingRate<'_>> = GetFundingRatesResponse(json.as_bytes().into())
             .parse()
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedFundingRate::try_from(p).unwrap())
+            .collect();
     }
 
     #[test]
@@ -466,8 +720,11 @@ mod tests {
   ]
 }
 "#;
-        GetExpiredFuturesResponse(json.as_bytes().into())
+        let _: Vec<ParsedExpiredFuture<'_>> = GetExpiredFuturesResponse(json.as_bytes().into())
             .parse()
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedExpiredFuture::try_from(p).unwrap())
+            .collect();
     }
 }

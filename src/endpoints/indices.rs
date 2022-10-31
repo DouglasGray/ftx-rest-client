@@ -1,15 +1,15 @@
 use bytes::Bytes;
 use reqwest::Method;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, collections::HashMap};
 
 use crate::{
     data::{
-        BaseCurrency, DateTimeStr, Exchange, NonNegativeDecimal, Price, QuoteCurrency, Underlying,
-        UnixTimestamp, WindowLength,
+        BaseCurrency, Exchange, FtxDateTime, QuoteCurrency, Underlying, UnixTimestamp, WindowLength,
     },
     private::Sealed,
-    QueryParams, Request,
+    Json, QueryParams, Request,
 };
 
 use super::macros::response;
@@ -55,10 +55,7 @@ impl<'a> Request<false> for GetWeights<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetWeightsResponse(Bytes);
 
-response!(
-    GetWeightsResponse,
-    HashMap<Underlying<'a>, NonNegativeDecimal>
-);
+response!(GetWeightsResponse, HashMap<Underlying<'a>, Decimal>);
 
 /// Retrieve historical index prices in some time frame for the
 /// provided futures market.
@@ -135,26 +132,62 @@ response!(
     Vec<(Exchange<'a>, BaseCurrency<'a>, QuoteCurrency<'a>)>
 );
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct Candle<'a> {
-    pub close: Price,
-    pub high: Price,
-    pub low: Price,
-    pub open: Price,
     #[serde(borrow)]
-    pub start_time: DateTimeStr<'a>,
-    #[serde(deserialize_with = "super::float_ts_to_unix_ts")]
-    pub time: UnixTimestamp,
+    pub close: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub high: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub low: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub open: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub start_time: Json<'a, FtxDateTime>,
+    #[serde(borrow)]
+    pub time: Json<'a, UnixTimestamp>,
     volume: Option<()>, // Is always `null`
 }
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
+
     use crate::Response;
 
     use super::*;
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    struct ParsedCandle {
+        pub close: Decimal,
+        pub high: Decimal,
+        pub low: Decimal,
+        pub open: Decimal,
+        pub start_time: FtxDateTime,
+        pub time: UnixTimestamp,
+        volume: Option<()>, // Is always `null`
+    }
+
+    impl<'a> TryFrom<Candle<'a>> for ParsedCandle {
+        type Error = serde_json::Error;
+
+        fn try_from(val: Candle<'a>) -> Result<Self, Self::Error> {
+            Ok(Self {
+                close: val.close.deserialize()?,
+                high: val.high.deserialize()?,
+                low: val.low.deserialize()?,
+                open: val.open.deserialize()?,
+                start_time: val.start_time.deserialize()?,
+                time: val.time.deserialize()?,
+                volume: val.volume,
+            })
+        }
+    }
 
     #[test]
     fn get_weights() {
@@ -172,7 +205,8 @@ mod tests {
   }
 }
 "#;
-        GetWeightsResponse(json.as_bytes().into()).parse().unwrap();
+        let _: HashMap<Underlying<'_>, Decimal> =
+            GetWeightsResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -193,7 +227,12 @@ mod tests {
   ]
 }
 "#;
-        GetCandlesResponse(json.as_bytes().into()).parse().unwrap();
+        let _: Vec<ParsedCandle> = GetCandlesResponse(json.as_bytes().into())
+            .parse()
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedCandle::try_from(p).unwrap())
+            .collect();
     }
 
     #[test]
@@ -208,8 +247,9 @@ mod tests {
   ]
 }
 "#;
-        GetConstituentsResponse(json.as_bytes().into())
-            .parse()
-            .unwrap();
+        let _: Vec<(Exchange<'_>, BaseCurrency<'_>, QuoteCurrency<'_>)> =
+            GetConstituentsResponse(json.as_bytes().into())
+                .parse()
+                .unwrap();
     }
 }

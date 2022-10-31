@@ -10,17 +10,10 @@ pub mod statistics;
 pub mod subaccounts;
 pub mod wallet;
 
-use serde::{de, Deserialize, Deserializer, Serialize};
-use std::{
-    convert::{TryFrom, TryInto},
-    error::Error as StdError,
-    fmt,
-};
+use serde::{Deserialize, Serialize};
+use std::{convert::TryFrom, error::Error as StdError, fmt};
 
-use crate::{
-    data::UnixTimestamp,
-    error::{Error, ErrorKind},
-};
+use crate::error::{Error, ErrorKind};
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub(crate) struct Success<T> {
@@ -101,13 +94,13 @@ impl fmt::Display for FtxResponseDeserializationError {
 
 impl StdError for FtxResponseDeserializationError {}
 
-fn float_ts_to_unix_ts<'de, D>(deserializer: D) -> Result<UnixTimestamp, D::Error>
-where
-    D: Deserializer<'de>,
-{
-    let ts: f64 = Deserialize::deserialize(deserializer)?;
-    ts.try_into().map_err(de::Error::custom)
-}
+// fn float_ts_to_unix_ts<'de, D>(deserializer: D) -> Result<UnixTimestamp, D::Error>
+// where
+//     D: Deserializer<'de>,
+// {
+//     let ts: f64 = Deserialize::deserialize(deserializer)?;
+//     ts.try_into().map_err(de::Error::custom)
+// }
 
 mod macros {
     macro_rules! response {

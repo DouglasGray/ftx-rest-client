@@ -4,9 +4,9 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{DateTimeStr, UnixTimestamp},
+    data::{FtxDateTime, UnixTimestamp},
     private::Sealed,
-    Request,
+    Json, Request,
 };
 
 use super::macros::response;
@@ -54,22 +54,54 @@ pub struct GetFundingPaymentsResponse(Bytes);
 
 response!(GetFundingPaymentsResponse, Vec<FundingPayment<'a>>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct FundingPayment<'a> {
     pub future: &'a str,
-    pub id: u64,
-    pub payment: Decimal,
-    pub rate: Decimal,
-    pub time: DateTimeStr<'a>,
+    #[serde(borrow)]
+    pub id: Json<'a, u64>,
+    #[serde(borrow)]
+    pub payment: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub rate: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub time: Json<'a, FtxDateTime>,
 }
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
+
     use crate::Response;
 
     use super::*;
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    pub struct ParsedFundingPayment<'a> {
+        pub future: &'a str,
+        pub id: u64,
+        pub payment: Decimal,
+        pub rate: Decimal,
+        pub time: FtxDateTime,
+    }
+
+    impl<'a> TryFrom<FundingPayment<'a>> for ParsedFundingPayment<'a> {
+        type Error = serde_json::Error;
+
+        fn try_from(val: FundingPayment<'a>) -> Result<Self, Self::Error> {
+            Ok(ParsedFundingPayment {
+                future: val.future,
+                id: val.id.deserialize()?,
+                payment: val.payment.deserialize()?,
+                rate: val.rate.deserialize()?,
+                time: val.time.deserialize()?,
+            })
+        }
+    }
 
     #[test]
     fn get_funding_payments() {
@@ -87,8 +119,11 @@ mod tests {
   ]
 }
 "#;
-        GetFundingPaymentsResponse(json.as_bytes().into())
+        let _: Vec<ParsedFundingPayment<'_>> = GetFundingPaymentsResponse(json.as_bytes().into())
             .parse()
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedFundingPayment::try_from(p).unwrap())
+            .collect();
     }
 }

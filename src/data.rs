@@ -10,12 +10,14 @@ use std::{
     str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
 };
-use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+use time::{
+    error::Parse as DateTimeParseError, format_description::well_known::Rfc3339, OffsetDateTime,
+};
 
 use crate::error::BoxError;
 
-pub type Price = PositiveDecimal;
-pub type Size = PositiveDecimal;
+pub type Price = Decimal;
+pub type Size = Decimal;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Exchange<'a>(pub &'a str);
@@ -195,7 +197,7 @@ impl From<f64> for InvalidUnixTimestamp {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FtxDateTime(OffsetDateTime);
 
 impl FtxDateTime {
@@ -226,41 +228,20 @@ impl Serialize for FtxDateTime {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct DateTimeStr<'a>(&'a str);
+
+impl<'a> DateTimeStr<'a> {
+    pub fn parse(&self) -> Result<OffsetDateTime, DateTimeParseError> {
+        OffsetDateTime::parse(&self.0, &Rfc3339)
+    }
+}
 
 impl<'a> TryFrom<DateTimeStr<'a>> for OffsetDateTime {
     type Error = DateTimeParseError;
 
     fn try_from(s: DateTimeStr<'a>) -> Result<Self, Self::Error> {
-        OffsetDateTime::parse(&s.0, &Rfc3339).map_err(|e| DateTimeParseError::new(s, e))
-    }
-}
-
-#[derive(Debug)]
-pub struct DateTimeParseError {
-    dt: String,
-    error: BoxError,
-}
-
-impl DateTimeParseError {
-    fn new(dt: DateTimeStr, error: impl Into<BoxError>) -> Self {
-        Self {
-            dt: dt.0.into(),
-            error: error.into(),
-        }
-    }
-}
-
-impl fmt::Display for DateTimeParseError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "failed to parse {} as a datetime", self.dt)
-    }
-}
-
-impl StdError for DateTimeParseError {
-    fn source(&self) -> Option<&(dyn StdError + 'static)> {
-        Some(self.error.as_ref())
+        s.parse()
     }
 }
 

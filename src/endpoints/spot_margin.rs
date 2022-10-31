@@ -1,11 +1,12 @@
 use bytes::Bytes;
 use reqwest::Method;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{DateTimeStr, NonNegativeDecimal, PositiveDecimal, UnixTimestamp},
+    data::{FtxDateTime, UnixTimestamp},
     private::Sealed,
-    Request,
+    Json, Request,
 };
 
 use super::macros::response;
@@ -71,7 +72,7 @@ impl<'a> Request<true> for GetBorrowForMarket<'a> {
 
 pub struct GetBorrowMarketsResponse(Bytes);
 
-response!(GetBorrowMarketsResponse, Option<Vec<BorrowMarket<'a>>>);
+response!(GetBorrowMarketsResponse, Vec<BorrowMarket<'a>>);
 
 /// Retrieve an account's borrow history.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -111,51 +112,161 @@ pub struct GetBorrowHistoryResponse(Bytes);
 
 response!(GetBorrowHistoryResponse, Vec<BorrowPayment<'a>>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct BorrowRate<'a> {
     pub coin: &'a str,
-    pub estimate: PositiveDecimal,
-    pub previous: PositiveDecimal,
+    #[serde(borrow)]
+    pub estimate: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub previous: Json<'a, Decimal>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct BorrowAmount<'a> {
     pub coin: &'a str,
-    pub size: NonNegativeDecimal,
+    #[serde(borrow)]
+    pub size: Json<'a, Decimal>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct BorrowMarket<'a> {
     pub coin: &'a str,
-    pub borrowed: NonNegativeDecimal,
-    pub free: NonNegativeDecimal,
-    pub estimated_rate: PositiveDecimal,
-    pub previous_rate: PositiveDecimal,
+    #[serde(borrow)]
+    pub borrowed: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub free: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub estimated_rate: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub previous_rate: Json<'a, Decimal>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct BorrowPayment<'a> {
     pub coin: &'a str,
-    pub cost: NonNegativeDecimal,
-    pub fee_usd: NonNegativeDecimal,
-    pub rate: PositiveDecimal,
-    pub size: PositiveDecimal,
-    pub time: DateTimeStr<'a>,
+    #[serde(borrow)]
+    pub cost: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub fee_usd: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub rate: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub time: Json<'a, FtxDateTime>,
 }
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
+
     use crate::Response;
 
     use super::*;
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    pub struct ParsedBorrowRate<'a> {
+        pub coin: &'a str,
+        pub estimate: Decimal,
+        pub previous: Decimal,
+    }
+
+    impl<'a> TryFrom<BorrowRate<'a>> for ParsedBorrowRate<'a> {
+        type Error = serde_json::Error;
+
+        fn try_from(val: BorrowRate<'a>) -> Result<Self, Self::Error> {
+            Ok(Self {
+                coin: val.coin,
+                estimate: val.estimate.deserialize()?,
+                previous: val.previous.deserialize()?,
+            })
+        }
+    }
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    pub struct ParsedBorrowAmount<'a> {
+        pub coin: &'a str,
+        pub size: Decimal,
+    }
+
+    impl<'a> TryFrom<BorrowAmount<'a>> for ParsedBorrowAmount<'a> {
+        type Error = serde_json::Error;
+
+        fn try_from(val: BorrowAmount<'a>) -> Result<Self, Self::Error> {
+            Ok(Self {
+                coin: val.coin,
+                size: val.size.deserialize()?,
+            })
+        }
+    }
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    pub struct ParsedBorrowMarket<'a> {
+        pub coin: &'a str,
+        pub borrowed: Decimal,
+        pub free: Decimal,
+        pub estimated_rate: Decimal,
+        pub previous_rate: Decimal,
+    }
+
+    impl<'a> TryFrom<BorrowMarket<'a>> for ParsedBorrowMarket<'a> {
+        type Error = serde_json::Error;
+
+        fn try_from(val: BorrowMarket<'a>) -> Result<Self, Self::Error> {
+            Ok(Self {
+                coin: val.coin,
+                borrowed: val.borrowed.deserialize()?,
+                free: val.free.deserialize()?,
+                estimated_rate: val.estimated_rate.deserialize()?,
+                previous_rate: val.previous_rate.deserialize()?,
+            })
+        }
+    }
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    pub struct ParsedBorrowPayment<'a> {
+        pub coin: &'a str,
+        pub cost: Decimal,
+        pub fee_usd: Decimal,
+        pub rate: Decimal,
+        pub size: Decimal,
+        pub time: FtxDateTime,
+    }
+
+    impl<'a> TryFrom<BorrowPayment<'a>> for ParsedBorrowPayment<'a> {
+        type Error = serde_json::Error;
+
+        fn try_from(val: BorrowPayment<'a>) -> Result<Self, Self::Error> {
+            Ok(Self {
+                coin: val.coin,
+                cost: val.cost.deserialize()?,
+                fee_usd: val.fee_usd.deserialize()?,
+                rate: val.rate.deserialize()?,
+                size: val.size.deserialize()?,
+                time: val.time.deserialize()?,
+            })
+        }
+    }
 
     #[test]
     fn get_borrow_rates() {
@@ -171,9 +282,12 @@ mod tests {
   ]
 }
 "#;
-        GetBorrowRatesResponse(json.as_bytes().into())
+        let _: Vec<ParsedBorrowRate> = GetBorrowRatesResponse(json.as_bytes().into())
             .parse()
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedBorrowRate::try_from(p).unwrap())
+            .collect();
     }
 
     #[test]
@@ -189,9 +303,12 @@ mod tests {
   ]
 }
 "#;
-        GetDailyBorrowedAmountsResponse(json.as_bytes().into())
+        let _: Vec<ParsedBorrowAmount> = GetDailyBorrowedAmountsResponse(json.as_bytes().into())
             .parse()
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedBorrowAmount::try_from(p).unwrap())
+            .collect();
     }
 
     #[test]
@@ -217,9 +334,12 @@ mod tests {
   ]
 }
 "#;
-        GetBorrowMarketsResponse(json.as_bytes().into())
+        let _: Vec<ParsedBorrowMarket<'_>> = GetBorrowMarketsResponse(json.as_bytes().into())
             .parse()
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedBorrowMarket::try_from(p).unwrap())
+            .collect();
     }
 
     #[test]
@@ -239,8 +359,11 @@ mod tests {
   ]
 }
 "#;
-        GetBorrowHistoryResponse(json.as_bytes().into())
+        let _: Vec<ParsedBorrowPayment<'_>> = GetBorrowHistoryResponse(json.as_bytes().into())
             .parse()
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedBorrowPayment::try_from(p).unwrap())
+            .collect();
     }
 }

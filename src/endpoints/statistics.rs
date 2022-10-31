@@ -1,8 +1,9 @@
 use bytes::Bytes;
 use reqwest::Method;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
-use crate::{data::NonNegativeDecimal, private::Sealed, QueryParams, Request};
+use crate::{private::Sealed, Json, QueryParams, Request};
 
 use super::macros::response;
 
@@ -43,22 +44,49 @@ impl<'a> Request<true> for GetLatencyStatistics<'a> {
 
 pub struct GetLatencyStatisticsResponse(Bytes);
 
-response!(GetLatencyStatisticsResponse, Vec<LatencyStats>);
+response!(GetLatencyStatisticsResponse, Vec<LatencyStats<'a>>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct LatencyStats {
-    pub bursty: bool,
-    pub p50: NonNegativeDecimal,
-    pub request_count: u64,
+pub struct LatencyStats<'a> {
+    #[serde(borrow)]
+    pub bursty: Json<'a, bool>,
+    #[serde(borrow)]
+    pub p50: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub request_count: Json<'a, u64>,
 }
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryFrom;
+
     use crate::Response;
 
     use super::*;
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    pub struct ParsedLatencyStats {
+        pub bursty: bool,
+        pub p50: Decimal,
+        pub request_count: u64,
+    }
+
+    impl<'a> TryFrom<LatencyStats<'a>> for ParsedLatencyStats {
+        type Error = serde_json::Error;
+
+        fn try_from(val: LatencyStats<'a>) -> Result<Self, Self::Error> {
+            Ok(Self {
+                bursty: val.bursty.deserialize()?,
+                p50: val.p50.deserialize()?,
+                request_count: val.request_count.deserialize()?,
+            })
+        }
+    }
 
     #[test]
     fn get_latency_statistics() {
@@ -79,8 +107,11 @@ mod tests {
   ]
 }
 "#;
-        GetLatencyStatisticsResponse(json.as_bytes().into())
+        let _: Vec<ParsedLatencyStats> = GetLatencyStatisticsResponse(json.as_bytes().into())
             .parse()
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedLatencyStats::try_from(p).unwrap())
+            .collect();
     }
 }

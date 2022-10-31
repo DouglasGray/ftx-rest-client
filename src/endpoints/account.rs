@@ -9,11 +9,7 @@ use std::{
     num::NonZeroU32,
 };
 
-use crate::{
-    data::{NonNegativeDecimal, PositiveDecimal, Price, Side, Size},
-    private::Sealed,
-    QueryParams, Request,
-};
+use crate::{data::Side, private::Sealed, Json, OptJson, QueryParams, Request};
 
 use super::macros::response;
 
@@ -168,63 +164,103 @@ pub struct ChangeAccountLeverageResponse(Bytes);
 
 response!(ChangeAccountLeverageResponse, ());
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct AccountInformation<'a> {
-    pub account_identifier: u64,
+    #[serde(borrow)]
+    pub account_identifier: Json<'a, u64>,
     pub account_type: Option<&'a str>,
-    pub backstop_provider: bool,
-    pub collateral: NonNegativeDecimal,
-    pub free_collateral: NonNegativeDecimal,
-    pub initial_margin_requirement: NonNegativeDecimal,
-    pub maintenance_margin_requirement: NonNegativeDecimal,
-    pub leverage: AccountLeverage,
-    pub futures_leverage: AccountLeverage,
-    pub liquidating: bool,
-    pub margin_fraction: Option<NonNegativeDecimal>,
-    pub open_margin_fraction: Option<NonNegativeDecimal>,
-    pub maker_fee: PositiveDecimal,
-    pub taker_fee: PositiveDecimal,
-    pub total_account_value: NonNegativeDecimal,
-    pub total_position_size: NonNegativeDecimal,
-    pub charge_interest_on_negative_usd: bool,
-    pub position_limit: Option<PositiveDecimal>,
-    pub position_limit_used: Option<NonNegativeDecimal>,
-    pub use_ftt_collateral: bool,
+    #[serde(borrow)]
+    pub backstop_provider: Json<'a, bool>,
+    #[serde(borrow)]
+    pub collateral: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub free_collateral: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub initial_margin_requirement: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub maintenance_margin_requirement: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub leverage: Json<'a, AccountLeverage>,
+    #[serde(borrow)]
+    pub futures_leverage: Json<'a, AccountLeverage>,
+    #[serde(borrow)]
+    pub liquidating: Json<'a, bool>,
+    #[serde(borrow)]
+    pub margin_fraction: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub open_margin_fraction: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub maker_fee: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub taker_fee: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub total_account_value: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub total_position_size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub charge_interest_on_negative_usd: Json<'a, bool>,
+    #[serde(borrow)]
+    pub position_limit: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub position_limit_used: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub use_ftt_collateral: Json<'a, bool>,
     pub username: &'a str,
-    pub spot_lending_enabled: bool,
-    pub spot_margin_enabled: bool,
-    pub spot_margin_withdrawals_enabled: bool,
+    #[serde(borrow)]
+    pub spot_lending_enabled: Json<'a, bool>,
+    #[serde(borrow)]
+    pub spot_margin_enabled: Json<'a, bool>,
+    #[serde(borrow)]
+    pub spot_margin_withdrawals_enabled: Json<'a, bool>,
     #[serde(borrow)]
     pub positions: Vec<Position<'a>>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct Position<'a> {
-    pub cost: Decimal,
-    pub entry_price: Option<Price>,
-    pub estimated_liquidation_price: Option<Price>,
     #[serde(borrow)]
+    pub cost: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub entry_price: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub estimated_liquidation_price: OptJson<'a, Decimal>,
     pub future: &'a str,
-    pub initial_margin_requirement: PositiveDecimal,
-    pub maintenance_margin_requirement: PositiveDecimal,
-    pub long_order_size: Size,
-    pub short_order_size: Size,
-    pub net_size: Decimal,
-    pub open_size: NonNegativeDecimal,
-    pub realized_pnl: Decimal,
-    pub side: Side,
-    pub size: Size,
-    pub unrealized_pnl: Decimal,
-    pub collateral_used: NonNegativeDecimal,
-    pub recent_average_open_price: Option<Price>,
-    pub recent_break_even_price: Option<Price>,
-    pub recent_pnl: Option<Decimal>,
-    pub cumulative_buy_size: Option<NonNegativeDecimal>,
-    pub cumulative_sell_size: Option<NonNegativeDecimal>,
+    #[serde(borrow)]
+    pub initial_margin_requirement: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub maintenance_margin_requirement: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub long_order_size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub short_order_size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub net_size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub open_size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub realized_pnl: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub side: Json<'a, Side>,
+    #[serde(borrow)]
+    pub size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub unrealized_pnl: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub collateral_used: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub recent_average_open_price: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub recent_break_even_price: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub recent_pnl: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub cumulative_buy_size: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub cumulative_sell_size: OptJson<'a, Decimal>,
 }
 
 #[cfg(test)]
@@ -232,6 +268,132 @@ mod tests {
     use crate::Response;
 
     use super::*;
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    struct ParsedAccountInformation<'a> {
+        pub account_identifier: u64,
+        pub account_type: Option<&'a str>,
+        pub backstop_provider: bool,
+        pub collateral: Decimal,
+        pub free_collateral: Decimal,
+        pub initial_margin_requirement: Decimal,
+        pub maintenance_margin_requirement: Decimal,
+        pub leverage: AccountLeverage,
+        pub futures_leverage: AccountLeverage,
+        pub liquidating: bool,
+        pub margin_fraction: Option<Decimal>,
+        pub open_margin_fraction: Option<Decimal>,
+        pub maker_fee: Decimal,
+        pub taker_fee: Decimal,
+        pub total_account_value: Decimal,
+        pub total_position_size: Decimal,
+        pub charge_interest_on_negative_usd: bool,
+        pub position_limit: Option<Decimal>,
+        pub position_limit_used: Option<Decimal>,
+        pub use_ftt_collateral: bool,
+        pub username: &'a str,
+        pub spot_lending_enabled: bool,
+        pub spot_margin_enabled: bool,
+        pub spot_margin_withdrawals_enabled: bool,
+        pub positions: Vec<ParsedPosition<'a>>,
+    }
+
+    impl<'a> TryFrom<AccountInformation<'a>> for ParsedAccountInformation<'a> {
+        type Error = serde_json::Error;
+
+        fn try_from(v: AccountInformation<'a>) -> Result<Self, Self::Error> {
+            Ok(ParsedAccountInformation {
+                account_identifier: v.account_identifier.deserialize()?,
+                account_type: v.account_type,
+                backstop_provider: v.backstop_provider.deserialize()?,
+                collateral: v.collateral.deserialize()?,
+                free_collateral: v.free_collateral.deserialize()?,
+                initial_margin_requirement: v.initial_margin_requirement.deserialize()?,
+                maintenance_margin_requirement: v.maintenance_margin_requirement.deserialize()?,
+                leverage: v.leverage.deserialize()?,
+                futures_leverage: v.futures_leverage.deserialize()?,
+                liquidating: v.liquidating.deserialize()?,
+                margin_fraction: v.margin_fraction.deserialize()?,
+                open_margin_fraction: v.open_margin_fraction.deserialize()?,
+                maker_fee: v.maker_fee.deserialize()?,
+                taker_fee: v.taker_fee.deserialize()?,
+                total_account_value: v.total_account_value.deserialize()?,
+                total_position_size: v.total_position_size.deserialize()?,
+                charge_interest_on_negative_usd: v.charge_interest_on_negative_usd.deserialize()?,
+                position_limit: v.position_limit.deserialize()?,
+                position_limit_used: v.position_limit_used.deserialize()?,
+                use_ftt_collateral: v.use_ftt_collateral.deserialize()?,
+                username: v.username,
+                spot_lending_enabled: v.spot_lending_enabled.deserialize()?,
+                spot_margin_enabled: v.spot_margin_enabled.deserialize()?,
+                spot_margin_withdrawals_enabled: v.spot_margin_withdrawals_enabled.deserialize()?,
+                positions: v
+                    .positions
+                    .into_iter()
+                    .map(TryFrom::try_from)
+                    .collect::<Result<_, _>>()?,
+            })
+        }
+    }
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    struct ParsedPosition<'a> {
+        pub cost: Decimal,
+        pub entry_price: Option<Decimal>,
+        pub estimated_liquidation_price: Option<Decimal>,
+        pub future: &'a str,
+        pub initial_margin_requirement: Decimal,
+        pub maintenance_margin_requirement: Decimal,
+        pub long_order_size: Decimal,
+        pub short_order_size: Decimal,
+        pub net_size: Decimal,
+        pub open_size: Decimal,
+        pub realized_pnl: Decimal,
+        pub side: Side,
+        pub size: Decimal,
+        pub unrealized_pnl: Decimal,
+        pub collateral_used: Decimal,
+        pub recent_average_open_price: Option<Decimal>,
+        pub recent_break_even_price: Option<Decimal>,
+        pub recent_pnl: Option<Decimal>,
+        pub cumulative_buy_size: Option<Decimal>,
+        pub cumulative_sell_size: Option<Decimal>,
+    }
+
+    impl<'a> TryFrom<Position<'a>> for ParsedPosition<'a> {
+        type Error = serde_json::Error;
+
+        fn try_from(p: Position<'a>) -> Result<Self, Self::Error> {
+            Ok(ParsedPosition {
+                cost: p.cost.deserialize()?,
+                entry_price: p.entry_price.deserialize()?,
+                estimated_liquidation_price: p.estimated_liquidation_price.deserialize()?,
+                future: p.future,
+                initial_margin_requirement: p.initial_margin_requirement.deserialize()?,
+                maintenance_margin_requirement: p.maintenance_margin_requirement.deserialize()?,
+                long_order_size: p.long_order_size.deserialize()?,
+                short_order_size: p.short_order_size.deserialize()?,
+                net_size: p.net_size.deserialize()?,
+                open_size: p.open_size.deserialize()?,
+                realized_pnl: p.realized_pnl.deserialize()?,
+                side: p.side.deserialize()?,
+                size: p.size.deserialize()?,
+                unrealized_pnl: p.unrealized_pnl.deserialize()?,
+                collateral_used: p.collateral_used.deserialize()?,
+                recent_average_open_price: p.recent_average_open_price.deserialize()?,
+                recent_break_even_price: p.recent_break_even_price.deserialize()?,
+                recent_pnl: p.recent_pnl.deserialize()?,
+                cumulative_buy_size: p.cumulative_buy_size.deserialize()?,
+                cumulative_sell_size: p.cumulative_sell_size.deserialize()?,
+            })
+        }
+    }
 
     #[test]
     fn get_account_information() {
@@ -284,8 +446,10 @@ mod tests {
   }
 }
 "#;
-        GetAccountInformationResponse(json.as_bytes().into())
+        let _: ParsedAccountInformation<'_> = GetAccountInformationResponse(json.as_bytes().into())
             .parse()
+            .unwrap()
+            .try_into()
             .unwrap();
     }
 
@@ -319,8 +483,12 @@ mod tests {
   ]
 }
 "#;
-        GetPositionsResponse(json.as_bytes().into())
+
+        let _: Vec<ParsedPosition<'_>> = GetPositionsResponse(json.as_bytes().into())
             .parse()
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedPosition::try_from(p).unwrap())
+            .collect();
     }
 }

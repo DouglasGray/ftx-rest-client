@@ -2,12 +2,13 @@ use std::borrow::Cow;
 
 use bytes::Bytes;
 use reqwest::Method;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{CancelAckMsg, DateTimeStr, NonNegativeDecimal, Price, Side, Size, UnixTimestamp},
+    data::{CancelAckMsg, FtxDateTime, Price, Side, Size, UnixTimestamp},
     private::Sealed,
-    QueryParams, Request,
+    Json, OptJson, QueryParams, Request,
 };
 
 use super::macros::response;
@@ -339,56 +340,179 @@ pub struct CancelAllOrdersResponse(Bytes);
 
 response!(CancelAllOrdersResponse, CancelAckMsg<'a>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct Order<'a> {
-    pub id: u64,
+    #[serde(borrow)]
+    pub id: Json<'a, u64>,
     pub client_id: Option<&'a str>,
     pub market: &'a str,
     pub future: Option<&'a str>,
-    pub side: Side,
-    pub size: Size,
-    pub price: Price,
-    pub avg_fill_price: Option<Price>,
-    pub filled_size: NonNegativeDecimal,
-    pub remaining_size: NonNegativeDecimal,
-    pub r#type: OrderType,
-    pub status: OrderStatus,
-    pub reduce_only: bool,
-    pub ioc: bool,
-    pub post_only: bool,
-    pub liquidation: bool,
     #[serde(borrow)]
-    pub created_at: DateTimeStr<'a>,
+    pub side: Json<'a, Side>,
+    #[serde(borrow)]
+    pub size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub price: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub avg_fill_price: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub filled_size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub remaining_size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub r#type: Json<'a, OrderType>,
+    #[serde(borrow)]
+    pub status: Json<'a, OrderStatus>,
+    #[serde(borrow)]
+    pub reduce_only: Json<'a, bool>,
+    #[serde(borrow)]
+    pub ioc: Json<'a, bool>,
+    #[serde(borrow)]
+    pub post_only: Json<'a, bool>,
+    #[serde(borrow)]
+    pub liquidation: Json<'a, bool>,
+    #[serde(borrow)]
+    pub created_at: Json<'a, FtxDateTime>,
 }
 
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct OrderPlaced<'a> {
-    pub id: u64,
+    #[serde(borrow)]
+    pub id: Json<'a, u64>,
     pub client_id: Option<&'a str>,
     pub market: &'a str,
     pub future: Option<&'a str>,
-    pub side: Side,
-    pub size: Size,
-    pub price: Price,
-    pub filled_size: NonNegativeDecimal,
-    pub remaining_size: NonNegativeDecimal,
-    pub r#type: OrderType,
-    pub status: OrderStatus,
-    pub reduce_only: bool,
-    pub ioc: bool,
-    pub post_only: bool,
     #[serde(borrow)]
-    pub created_at: DateTimeStr<'a>,
+    pub side: Json<'a, Side>,
+    #[serde(borrow)]
+    pub size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub price: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub filled_size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub remaining_size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub r#type: Json<'a, OrderType>,
+    #[serde(borrow)]
+    pub status: Json<'a, OrderStatus>,
+    #[serde(borrow)]
+    pub reduce_only: Json<'a, bool>,
+    #[serde(borrow)]
+    pub ioc: Json<'a, bool>,
+    #[serde(borrow)]
+    pub post_only: Json<'a, bool>,
+    #[serde(borrow)]
+    pub created_at: Json<'a, FtxDateTime>,
 }
 
 #[cfg(test)]
 mod tests {
+    use std::convert::{TryFrom, TryInto};
+
     use crate::Response;
 
     use super::*;
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    pub struct ParsedOrder<'a> {
+        pub id: u64,
+        pub client_id: Option<&'a str>,
+        pub market: &'a str,
+        pub future: Option<&'a str>,
+        pub side: Side,
+        pub size: Decimal,
+        pub price: Decimal,
+        pub avg_fill_price: Option<Decimal>,
+        pub filled_size: Decimal,
+        pub remaining_size: Decimal,
+        pub r#type: OrderType,
+        pub status: OrderStatus,
+        pub reduce_only: bool,
+        pub ioc: bool,
+        pub post_only: bool,
+        pub liquidation: bool,
+        pub created_at: FtxDateTime,
+    }
+
+    impl<'a> TryFrom<Order<'a>> for ParsedOrder<'a> {
+        type Error = serde_json::Error;
+
+        fn try_from(val: Order<'a>) -> Result<Self, Self::Error> {
+            Ok(Self {
+                id: val.id.deserialize()?,
+                client_id: val.client_id,
+                market: val.market,
+                future: val.future,
+                side: val.side.deserialize()?,
+                size: val.size.deserialize()?,
+                price: val.price.deserialize()?,
+                avg_fill_price: val.avg_fill_price.deserialize()?,
+                filled_size: val.filled_size.deserialize()?,
+                remaining_size: val.remaining_size.deserialize()?,
+                r#type: val.r#type.deserialize()?,
+                status: val.status.deserialize()?,
+                reduce_only: val.reduce_only.deserialize()?,
+                ioc: val.ioc.deserialize()?,
+                post_only: val.post_only.deserialize()?,
+                liquidation: val.liquidation.deserialize()?,
+                created_at: val.created_at.deserialize()?,
+            })
+        }
+    }
+
+    #[allow(dead_code)]
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+    pub struct ParsedOrderPlaced<'a> {
+        pub id: u64,
+        pub client_id: Option<&'a str>,
+        pub market: &'a str,
+        pub future: Option<&'a str>,
+        pub side: Side,
+        pub size: Decimal,
+        pub price: Decimal,
+        pub filled_size: Decimal,
+        pub remaining_size: Decimal,
+        pub r#type: OrderType,
+        pub status: OrderStatus,
+        pub reduce_only: bool,
+        pub ioc: bool,
+        pub post_only: bool,
+        pub created_at: FtxDateTime,
+    }
+
+    impl<'a> TryFrom<OrderPlaced<'a>> for ParsedOrderPlaced<'a> {
+        type Error = serde_json::Error;
+
+        fn try_from(val: OrderPlaced<'a>) -> Result<Self, Self::Error> {
+            Ok(Self {
+                id: val.id.deserialize()?,
+                client_id: val.client_id,
+                market: val.market,
+                future: val.future,
+                side: val.side.deserialize()?,
+                size: val.size.deserialize()?,
+                price: val.price.deserialize()?,
+                filled_size: val.filled_size.deserialize()?,
+                remaining_size: val.remaining_size.deserialize()?,
+                r#type: val.r#type.deserialize()?,
+                status: val.status.deserialize()?,
+                reduce_only: val.reduce_only.deserialize()?,
+                ioc: val.ioc.deserialize()?,
+                post_only: val.post_only.deserialize()?,
+                created_at: val.created_at.deserialize()?,
+            })
+        }
+    }
 
     #[test]
     fn get_open_orders() {
@@ -418,9 +542,12 @@ mod tests {
   ]
 }
 "#;
-        GetOpenOrdersResponse(json.as_bytes().into())
+        let _: Vec<ParsedOrder> = GetOpenOrdersResponse(json.as_bytes().into())
             .parse()
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedOrder::try_from(p).unwrap())
+            .collect();
     }
 
     #[test]
@@ -452,9 +579,12 @@ mod tests {
   "hasMoreData": false
 }
 "#;
-        GetOrderHistoryResponse(json.as_bytes().into())
+        let _: Vec<ParsedOrder> = GetOpenOrdersResponse(json.as_bytes().into())
             .parse()
-            .unwrap();
+            .unwrap()
+            .into_iter()
+            .map(|p| ParsedOrder::try_from(p).unwrap())
+            .collect();
     }
 
     #[test]
@@ -481,7 +611,11 @@ mod tests {
   }
 }
 "#;
-        PlaceOrderResponse(json.as_bytes().into()).parse().unwrap();
+        let _: OrderPlaced<'_> = PlaceOrderResponse(json.as_bytes().into())
+            .parse()
+            .unwrap()
+            .try_into()
+            .unwrap();
     }
 
     #[test]
@@ -508,7 +642,11 @@ mod tests {
   }
 }
 "#;
-        EditOrderResponse(json.as_bytes().into()).parse().unwrap();
+        let _: OrderPlaced<'_> = EditOrderResponse(json.as_bytes().into())
+            .parse()
+            .unwrap()
+            .try_into()
+            .unwrap();
     }
 
     #[test]
@@ -537,8 +675,10 @@ mod tests {
   }
 }
 "#;
-        GetOrderStatusResponse(json.as_bytes().into())
+        let _: ParsedOrder<'_> = GetOrderStatusResponse(json.as_bytes().into())
             .parse()
+            .unwrap()
+            .try_into()
             .unwrap();
     }
 
@@ -550,7 +690,7 @@ mod tests {
   "result": "Order queued for cancelation"
 }
 "#;
-        CancelOrderResponse(json.as_bytes().into()).parse().unwrap();
+        let _: CancelAckMsg<'_> = CancelOrderResponse(json.as_bytes().into()).parse().unwrap();
     }
 
     #[test]
@@ -561,7 +701,7 @@ mod tests {
   "result": "Orders queued for cancelation"
 }
 "#;
-        CancelAllOrdersResponse(json.as_bytes().into())
+        let _: CancelAckMsg<'_> = CancelAllOrdersResponse(json.as_bytes().into())
             .parse()
             .unwrap();
     }
