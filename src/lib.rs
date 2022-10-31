@@ -65,7 +65,7 @@ pub trait Response: From<Bytes> + AsRef<Bytes> + private::Sealed {
     where
         <Self as Response>::PartialData<'a>: Deserialize<'de>,
     {
-        FtxResponse::try_from(self.as_ref().as_ref())?.try_into()
+        FtxResponse::try_from(self.as_ref().as_ref())?.deserialize()
     }
 }
 
