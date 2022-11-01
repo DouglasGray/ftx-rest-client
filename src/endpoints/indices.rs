@@ -2,7 +2,7 @@ use bytes::Bytes;
 use reqwest::Method;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, convert::TryFrom};
 
 use crate::{
     data::{
@@ -55,7 +55,11 @@ impl<'a> Request<false> for GetWeights<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetWeightsResponse(Bytes);
 
-response!(GetWeightsResponse, HashMap<Underlying<'a>, Decimal>);
+response!(
+    GetWeightsResponse,
+    HashMap<Underlying<'a>, Decimal>,
+    HashMap<Underlying<'a>, Decimal>
+);
 
 /// Retrieve historical index prices in some time frame for the
 /// provided futures market.
@@ -99,7 +103,7 @@ impl<'a> Request<false> for GetCandles<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetCandlesResponse(Bytes);
 
-response!(GetCandlesResponse, Vec<CandlePartial<'a>>);
+response!(GetCandlesResponse, Vec<Candle>, Vec<CandlePartial<'a>>);
 
 /// Retrieve information on an index's constituents.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -129,8 +133,38 @@ pub struct GetConstituentsResponse(Bytes);
 
 response!(
     GetConstituentsResponse,
+    Vec<(Exchange<'a>, BaseCurrency<'a>, QuoteCurrency<'a>)>,
     Vec<(Exchange<'a>, BaseCurrency<'a>, QuoteCurrency<'a>)>
 );
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct Candle {
+    pub close: Decimal,
+    pub high: Decimal,
+    pub low: Decimal,
+    pub open: Decimal,
+    pub start_time: FtxDateTime,
+    pub time: UnixTimestamp,
+    volume: Option<()>, // Is always `null`
+}
+
+impl<'a> TryFrom<CandlePartial<'a>> for Candle {
+    type Error = serde_json::Error;
+
+    fn try_from(val: CandlePartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            close: val.close.deserialize()?,
+            high: val.high.deserialize()?,
+            low: val.low.deserialize()?,
+            open: val.open.deserialize()?,
+            start_time: val.start_time.deserialize()?,
+            time: val.time.deserialize()?,
+            volume: val.volume,
+        })
+    }
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -153,41 +187,9 @@ pub struct CandlePartial<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryFrom;
-
     use crate::Response;
 
     use super::*;
-
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    struct Candle {
-        pub close: Decimal,
-        pub high: Decimal,
-        pub low: Decimal,
-        pub open: Decimal,
-        pub start_time: FtxDateTime,
-        pub time: UnixTimestamp,
-        volume: Option<()>, // Is always `null`
-    }
-
-    impl<'a> TryFrom<CandlePartial<'a>> for Candle {
-        type Error = serde_json::Error;
-
-        fn try_from(val: CandlePartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                close: val.close.deserialize()?,
-                high: val.high.deserialize()?,
-                low: val.low.deserialize()?,
-                open: val.open.deserialize()?,
-                start_time: val.start_time.deserialize()?,
-                time: val.time.deserialize()?,
-                volume: val.volume,
-            })
-        }
-    }
 
     #[test]
     fn get_weights() {
@@ -205,9 +207,12 @@ mod tests {
   }
 }
 "#;
-        let _: HashMap<Underlying<'_>, Decimal> = GetWeightsResponse(json.as_bytes().into())
-            .deserialize_partial()
-            .unwrap();
+        let response = GetWeightsResponse(json.as_bytes().into());
+
+        let from_partial: HashMap<Underlying<'_>, Decimal> =
+            response.deserialize_partial().unwrap();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -228,12 +233,16 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<Candle> = GetCandlesResponse(json.as_bytes().into())
+        let response = GetCandlesResponse(json.as_bytes().into());
+
+        let from_partial: Vec<Candle> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| Candle::try_from(p).unwrap())
             .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -248,9 +257,11 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<(Exchange<'_>, BaseCurrency<'_>, QuoteCurrency<'_>)> =
-            GetConstituentsResponse(json.as_bytes().into())
-                .deserialize_partial()
-                .unwrap();
+        let response = GetConstituentsResponse(json.as_bytes().into());
+
+        let from_partial: Vec<(Exchange<'_>, BaseCurrency<'_>, QuoteCurrency<'_>)> =
+            response.deserialize_partial().unwrap();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 }

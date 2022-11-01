@@ -63,7 +63,7 @@ where
 
 mod macros {
     macro_rules! response {
-        ($res:ty, $data:ty) => {
+        ($res:ty, $data:ty, $partial_data:ty) => {
             impl From<Bytes> for $res {
                 fn from(b: Bytes) -> Self {
                     Self(b)
@@ -79,7 +79,9 @@ mod macros {
             impl crate::private::Sealed for $res {}
 
             impl crate::Response for $res {
-                type PartialData<'a> = $data;
+                type Data<'a> = $data;
+
+                type PartialData<'a> = $partial_data;
             }
         };
     }

@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use bytes::Bytes;
 use reqwest::Method;
 use rust_decimal::Decimal;
@@ -52,7 +54,36 @@ impl<'a> Request<true> for GetFundingPayments<'a> {
 
 pub struct GetFundingPaymentsResponse(Bytes);
 
-response!(GetFundingPaymentsResponse, Vec<FundingPaymentPartial<'a>>);
+response!(
+    GetFundingPaymentsResponse,
+    Vec<FundingPayment<'a>>,
+    Vec<FundingPaymentPartial<'a>>
+);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct FundingPayment<'a> {
+    pub future: &'a str,
+    pub id: u64,
+    pub payment: Decimal,
+    pub rate: Decimal,
+    pub time: FtxDateTime,
+}
+
+impl<'a> TryFrom<FundingPaymentPartial<'a>> for FundingPayment<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: FundingPaymentPartial<'a>) -> Result<Self, Self::Error> {
+        Ok(FundingPayment {
+            future: val.future,
+            id: val.id.deserialize()?,
+            payment: val.payment.deserialize()?,
+            rate: val.rate.deserialize()?,
+            time: val.time.deserialize()?,
+        })
+    }
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -71,38 +102,11 @@ pub struct FundingPaymentPartial<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::TryFrom;
-
     use crate::Response;
 
     use super::*;
 
     #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct FundingPayment<'a> {
-        pub future: &'a str,
-        pub id: u64,
-        pub payment: Decimal,
-        pub rate: Decimal,
-        pub time: FtxDateTime,
-    }
-
-    impl<'a> TryFrom<FundingPaymentPartial<'a>> for FundingPayment<'a> {
-        type Error = serde_json::Error;
-
-        fn try_from(val: FundingPaymentPartial<'a>) -> Result<Self, Self::Error> {
-            Ok(FundingPayment {
-                future: val.future,
-                id: val.id.deserialize()?,
-                payment: val.payment.deserialize()?,
-                rate: val.rate.deserialize()?,
-                time: val.time.deserialize()?,
-            })
-        }
-    }
-
     #[test]
     fn get_funding_payments() {
         let json = r#"
@@ -119,11 +123,15 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<FundingPayment<'_>> = GetFundingPaymentsResponse(json.as_bytes().into())
+        let response = GetFundingPaymentsResponse(json.as_bytes().into());
+
+        let from_partial: Vec<FundingPayment<'_>> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| FundingPayment::try_from(p).unwrap())
             .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 }

@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, convert::TryFrom};
 
 use bytes::Bytes;
 use reqwest::Method;
@@ -72,7 +72,7 @@ impl Request<false> for GetFutures {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFuturesResponse(Bytes);
 
-response!(GetFuturesResponse, Vec<FuturePartial<'a>>);
+response!(GetFuturesResponse, Vec<Future<'a>>, Vec<FuturePartial<'a>>);
 
 /// Retrieve information on a single future.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -97,7 +97,7 @@ impl<'a> Request<false> for GetFuture<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFutureResponse(Bytes);
 
-response!(GetFutureResponse, FuturePartial<'a>);
+response!(GetFutureResponse, Future<'a>, FuturePartial<'a>);
 
 /// Retrieve future statistics, including predicted funding rate.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -122,7 +122,7 @@ impl<'a> Request<false> for GetFutureStats<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFutureStatsResponse(Bytes);
 
-response!(GetFutureStatsResponse, FutureStatsPartial<'a>);
+response!(GetFutureStatsResponse, FutureStats, FutureStatsPartial<'a>);
 
 /// Retrieve historical funding rates.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -165,7 +165,11 @@ impl<'a> Request<false> for GetFundingRates<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetFundingRatesResponse(Bytes);
 
-response!(GetFundingRatesResponse, Vec<FundingRatePartial<'a>>);
+response!(
+    GetFundingRatesResponse,
+    Vec<FundingRate<'a>>,
+    Vec<FundingRatePartial<'a>>
+);
 
 /// Retrieve information on all expired futures.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -184,7 +188,90 @@ impl Request<false> for GetExpiredFutures {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetExpiredFuturesResponse(Bytes);
 
-response!(GetExpiredFuturesResponse, Vec<ExpiredFuturePartial<'a>>);
+response!(
+    GetExpiredFuturesResponse,
+    Vec<ExpiredFuture<'a>>,
+    Vec<ExpiredFuturePartial<'a>>
+);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct Future<'a> {
+    pub name: &'a str,
+    pub underlying: &'a str,
+    pub description: &'a str,
+    pub underlying_description: &'a str,
+    pub expiry_description: &'a str,
+    pub r#type: FutureType,
+    pub group: FutureGroup,
+    pub expiry: Option<FtxDateTime>,
+    pub perpetual: bool,
+    pub expired: bool,
+    pub enabled: bool,
+    pub post_only: bool,
+    pub price_increment: Decimal,
+    pub size_increment: Decimal,
+    pub last: Option<Decimal>,
+    pub bid: Option<Decimal>,
+    pub ask: Option<Decimal>,
+    pub index: Option<Decimal>,
+    pub mark: Option<Decimal>,
+    pub imf_factor: Decimal,
+    pub lower_bound: Option<Decimal>,
+    pub upper_bound: Option<Decimal>,
+    pub margin_price: Option<Decimal>,
+    pub position_limit_weight: Decimal,
+    pub change_1h: Option<Decimal>,
+    pub change_24h: Option<Decimal>,
+    pub change_bod: Option<Decimal>,
+    pub volume_usd_24h: Decimal,
+    pub volume: Decimal,
+    pub open_interest: Decimal,
+    pub open_interest_usd: Decimal,
+    pub move_start: Option<FtxDateTime>,
+}
+
+impl<'a> TryFrom<FuturePartial<'a>> for Future<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: FuturePartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: val.name,
+            underlying: val.underlying,
+            description: val.description,
+            underlying_description: val.underlying_description,
+            expiry_description: val.expiry_description,
+            r#type: val.r#type.deserialize()?,
+            group: val.group.deserialize()?,
+            expiry: val.expiry.deserialize()?,
+            perpetual: val.perpetual.deserialize()?,
+            expired: val.expired.deserialize()?,
+            enabled: val.enabled.deserialize()?,
+            post_only: val.post_only.deserialize()?,
+            price_increment: val.price_increment.deserialize()?,
+            size_increment: val.size_increment.deserialize()?,
+            last: val.last.deserialize()?,
+            bid: val.bid.deserialize()?,
+            ask: val.ask.deserialize()?,
+            index: val.index.deserialize()?,
+            mark: val.mark.deserialize()?,
+            imf_factor: val.imf_factor.deserialize()?,
+            lower_bound: val.lower_bound.deserialize()?,
+            upper_bound: val.upper_bound.deserialize()?,
+            margin_price: val.margin_price.deserialize()?,
+            position_limit_weight: val.position_limit_weight.deserialize()?,
+            change_1h: val.change_1h.deserialize()?,
+            change_24h: val.change_24h.deserialize()?,
+            change_bod: val.change_bod.deserialize()?,
+            volume_usd_24h: val.volume_usd_24h.deserialize()?,
+            volume: val.volume.deserialize()?,
+            open_interest: val.open_interest.deserialize()?,
+            open_interest_usd: val.open_interest_usd.deserialize()?,
+            move_start: val.move_start.deserialize()?,
+        })
+    }
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -251,6 +338,35 @@ pub struct FuturePartial<'a> {
     pub move_start: OptJson<'a, FtxDateTime>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct FutureStats {
+    pub volume: Decimal,
+    pub next_funding_rate: Option<Decimal>,
+    pub next_funding_time: FtxDateTime,
+    pub expiration_price: Option<Decimal>,
+    pub predicted_expiration_price: Option<Decimal>,
+    pub strike_price: Option<Decimal>,
+    pub open_interest: Decimal,
+}
+
+impl<'a> TryFrom<FutureStatsPartial<'a>> for FutureStats {
+    type Error = serde_json::Error;
+
+    fn try_from(val: FutureStatsPartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            volume: val.volume.deserialize()?,
+            next_funding_rate: val.next_funding_rate.deserialize()?,
+            next_funding_time: val.next_funding_time.deserialize()?,
+            expiration_price: val.expiration_price.deserialize()?,
+            predicted_expiration_price: val.predicted_expiration_price.deserialize()?,
+            strike_price: val.strike_price.deserialize()?,
+            open_interest: val.open_interest.deserialize()?,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
@@ -271,6 +387,27 @@ pub struct FutureStatsPartial<'a> {
     pub open_interest: Json<'a, Decimal>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct FundingRate<'a> {
+    pub future: &'a str,
+    pub rate: Decimal,
+    pub time: FtxDateTime,
+}
+
+impl<'a> TryFrom<FundingRatePartial<'a>> for FundingRate<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: FundingRatePartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            future: val.future,
+            rate: val.rate.deserialize()?,
+            time: val.time.deserialize()?,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
@@ -280,6 +417,71 @@ pub struct FundingRatePartial<'a> {
     pub rate: Json<'a, Decimal>,
     #[serde(borrow)]
     pub time: Json<'a, FtxDateTime>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct ExpiredFuture<'a> {
+    pub name: &'a str,
+    pub underlying: &'a str,
+    pub description: &'a str,
+    pub underlying_description: &'a str,
+    pub expiry_description: &'a str,
+    pub r#type: FutureType,
+    pub group: FutureGroup,
+    pub expiry: Option<FtxDateTime>,
+    pub perpetual: bool,
+    pub expired: bool,
+    pub enabled: bool,
+    pub post_only: bool,
+    pub price_increment: Decimal,
+    pub size_increment: Decimal,
+    pub last: Option<Decimal>,
+    pub bid: Option<Decimal>,
+    pub ask: Option<Decimal>,
+    pub index: Option<Decimal>,
+    pub mark: Option<Decimal>,
+    pub imf_factor: Decimal,
+    pub lower_bound: Option<Decimal>,
+    pub upper_bound: Option<Decimal>,
+    pub margin_price: Option<Decimal>,
+    pub position_limit_weight: Decimal,
+    pub move_start: Option<FtxDateTime>,
+}
+
+impl<'a> TryFrom<ExpiredFuturePartial<'a>> for ExpiredFuture<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: ExpiredFuturePartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: val.name,
+            underlying: val.underlying,
+            description: val.description,
+            underlying_description: val.underlying_description,
+            expiry_description: val.expiry_description,
+            r#type: val.r#type.deserialize()?,
+            group: val.group.deserialize()?,
+            expiry: val.expiry.deserialize()?,
+            perpetual: val.perpetual.deserialize()?,
+            expired: val.expired.deserialize()?,
+            enabled: val.enabled.deserialize()?,
+            post_only: val.post_only.deserialize()?,
+            price_increment: val.price_increment.deserialize()?,
+            size_increment: val.size_increment.deserialize()?,
+            last: val.last.deserialize()?,
+            bid: val.bid.deserialize()?,
+            ask: val.ask.deserialize()?,
+            index: val.index.deserialize()?,
+            mark: val.mark.deserialize()?,
+            imf_factor: val.imf_factor.deserialize()?,
+            lower_bound: val.lower_bound.deserialize()?,
+            upper_bound: val.upper_bound.deserialize()?,
+            margin_price: val.margin_price.deserialize()?,
+            position_limit_weight: val.position_limit_weight.deserialize()?,
+            move_start: val.move_start.deserialize()?,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -335,209 +537,11 @@ pub struct ExpiredFuturePartial<'a> {
 
 #[cfg(test)]
 mod tests {
-    use std::convert::{TryFrom, TryInto};
+    use std::convert::TryInto;
 
     use crate::Response;
 
     use super::*;
-
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    struct Future<'a> {
-        pub name: &'a str,
-        pub underlying: &'a str,
-        pub description: &'a str,
-        pub underlying_description: &'a str,
-        pub expiry_description: &'a str,
-        pub r#type: FutureType,
-        pub group: FutureGroup,
-        pub expiry: Option<FtxDateTime>,
-        pub perpetual: bool,
-        pub expired: bool,
-        pub enabled: bool,
-        pub post_only: bool,
-        pub price_increment: Decimal,
-        pub size_increment: Decimal,
-        pub last: Option<Decimal>,
-        pub bid: Option<Decimal>,
-        pub ask: Option<Decimal>,
-        pub index: Option<Decimal>,
-        pub mark: Option<Decimal>,
-        pub imf_factor: Decimal,
-        pub lower_bound: Option<Decimal>,
-        pub upper_bound: Option<Decimal>,
-        pub margin_price: Option<Decimal>,
-        pub position_limit_weight: Decimal,
-        pub change_1h: Option<Decimal>,
-        pub change_24h: Option<Decimal>,
-        pub change_bod: Option<Decimal>,
-        pub volume_usd_24h: Decimal,
-        pub volume: Decimal,
-        pub open_interest: Decimal,
-        pub open_interest_usd: Decimal,
-        pub move_start: Option<FtxDateTime>,
-    }
-
-    impl<'a> TryFrom<FuturePartial<'a>> for Future<'a> {
-        type Error = serde_json::Error;
-
-        fn try_from(val: FuturePartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                name: val.name,
-                underlying: val.underlying,
-                description: val.description,
-                underlying_description: val.underlying_description,
-                expiry_description: val.expiry_description,
-                r#type: val.r#type.deserialize()?,
-                group: val.group.deserialize()?,
-                expiry: val.expiry.deserialize()?,
-                perpetual: val.perpetual.deserialize()?,
-                expired: val.expired.deserialize()?,
-                enabled: val.enabled.deserialize()?,
-                post_only: val.post_only.deserialize()?,
-                price_increment: val.price_increment.deserialize()?,
-                size_increment: val.size_increment.deserialize()?,
-                last: val.last.deserialize()?,
-                bid: val.bid.deserialize()?,
-                ask: val.ask.deserialize()?,
-                index: val.index.deserialize()?,
-                mark: val.mark.deserialize()?,
-                imf_factor: val.imf_factor.deserialize()?,
-                lower_bound: val.lower_bound.deserialize()?,
-                upper_bound: val.upper_bound.deserialize()?,
-                margin_price: val.margin_price.deserialize()?,
-                position_limit_weight: val.position_limit_weight.deserialize()?,
-                change_1h: val.change_1h.deserialize()?,
-                change_24h: val.change_24h.deserialize()?,
-                change_bod: val.change_bod.deserialize()?,
-                volume_usd_24h: val.volume_usd_24h.deserialize()?,
-                volume: val.volume.deserialize()?,
-                open_interest: val.open_interest.deserialize()?,
-                open_interest_usd: val.open_interest_usd.deserialize()?,
-                move_start: val.move_start.deserialize()?,
-            })
-        }
-    }
-
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    struct FutureStats {
-        pub volume: Decimal,
-        pub next_funding_rate: Option<Decimal>,
-        pub next_funding_time: FtxDateTime,
-        pub expiration_price: Option<Decimal>,
-        pub predicted_expiration_price: Option<Decimal>,
-        pub strike_price: Option<Decimal>,
-        pub open_interest: Decimal,
-    }
-
-    impl<'a> TryFrom<FutureStatsPartial<'a>> for FutureStats {
-        type Error = serde_json::Error;
-
-        fn try_from(val: FutureStatsPartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                volume: val.volume.deserialize()?,
-                next_funding_rate: val.next_funding_rate.deserialize()?,
-                next_funding_time: val.next_funding_time.deserialize()?,
-                expiration_price: val.expiration_price.deserialize()?,
-                predicted_expiration_price: val.predicted_expiration_price.deserialize()?,
-                strike_price: val.strike_price.deserialize()?,
-                open_interest: val.open_interest.deserialize()?,
-            })
-        }
-    }
-
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct FundingRate<'a> {
-        pub future: &'a str,
-        pub rate: Decimal,
-        pub time: FtxDateTime,
-    }
-
-    impl<'a> TryFrom<FundingRatePartial<'a>> for FundingRate<'a> {
-        type Error = serde_json::Error;
-
-        fn try_from(val: FundingRatePartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                future: val.future,
-                rate: val.rate.deserialize()?,
-                time: val.time.deserialize()?,
-            })
-        }
-    }
-
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct ExpiredFuture<'a> {
-        pub name: &'a str,
-        pub underlying: &'a str,
-        pub description: &'a str,
-        pub underlying_description: &'a str,
-        pub expiry_description: &'a str,
-        pub r#type: FutureType,
-        pub group: FutureGroup,
-        pub expiry: Option<FtxDateTime>,
-        pub perpetual: bool,
-        pub expired: bool,
-        pub enabled: bool,
-        pub post_only: bool,
-        pub price_increment: Decimal,
-        pub size_increment: Decimal,
-        pub last: Option<Decimal>,
-        pub bid: Option<Decimal>,
-        pub ask: Option<Decimal>,
-        pub index: Option<Decimal>,
-        pub mark: Option<Decimal>,
-        pub imf_factor: Decimal,
-        pub lower_bound: Option<Decimal>,
-        pub upper_bound: Option<Decimal>,
-        pub margin_price: Option<Decimal>,
-        pub position_limit_weight: Decimal,
-        pub move_start: Option<FtxDateTime>,
-    }
-
-    impl<'a> TryFrom<ExpiredFuturePartial<'a>> for ExpiredFuture<'a> {
-        type Error = serde_json::Error;
-
-        fn try_from(val: ExpiredFuturePartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                name: val.name,
-                underlying: val.underlying,
-                description: val.description,
-                underlying_description: val.underlying_description,
-                expiry_description: val.expiry_description,
-                r#type: val.r#type.deserialize()?,
-                group: val.group.deserialize()?,
-                expiry: val.expiry.deserialize()?,
-                perpetual: val.perpetual.deserialize()?,
-                expired: val.expired.deserialize()?,
-                enabled: val.enabled.deserialize()?,
-                post_only: val.post_only.deserialize()?,
-                price_increment: val.price_increment.deserialize()?,
-                size_increment: val.size_increment.deserialize()?,
-                last: val.last.deserialize()?,
-                bid: val.bid.deserialize()?,
-                ask: val.ask.deserialize()?,
-                index: val.index.deserialize()?,
-                mark: val.mark.deserialize()?,
-                imf_factor: val.imf_factor.deserialize()?,
-                lower_bound: val.lower_bound.deserialize()?,
-                upper_bound: val.upper_bound.deserialize()?,
-                margin_price: val.margin_price.deserialize()?,
-                position_limit_weight: val.position_limit_weight.deserialize()?,
-                move_start: val.move_start.deserialize()?,
-            })
-        }
-    }
 
     #[test]
     fn get_futures() {
@@ -582,12 +586,16 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<Future<'_>> = GetFuturesResponse(json.as_bytes().into())
+        let response = GetFuturesResponse(json.as_bytes().into());
+
+        let from_partial: Vec<Future<'_>> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| Future::try_from(p).unwrap())
             .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -631,12 +639,11 @@ mod tests {
     }
 }
 "#;
+        let response = GetFutureResponse(json.as_bytes().into());
 
-        let _: Future<'_> = GetFutureResponse(json.as_bytes().into())
-            .deserialize_partial()
-            .unwrap()
-            .try_into()
-            .unwrap();
+        let from_partial: Future<'_> = response.deserialize_partial().unwrap().try_into().unwrap();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -655,11 +662,11 @@ mod tests {
   }
 }
 "#;
-        let _: FutureStats = GetFutureStatsResponse(json.as_bytes().into())
-            .deserialize_partial()
-            .unwrap()
-            .try_into()
-            .unwrap();
+        let response = GetFutureStatsResponse(json.as_bytes().into());
+
+        let from_partial: FutureStats = response.deserialize_partial().unwrap().try_into().unwrap();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -676,12 +683,16 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<FundingRate<'_>> = GetFundingRatesResponse(json.as_bytes().into())
+        let response = GetFundingRatesResponse(json.as_bytes().into());
+
+        let from_partial: Vec<FundingRate<'_>> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| FundingRate::try_from(p).unwrap())
             .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -720,11 +731,15 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<ExpiredFuture<'_>> = GetExpiredFuturesResponse(json.as_bytes().into())
+        let response = GetExpiredFuturesResponse(json.as_bytes().into());
+
+        let from_partial: Vec<ExpiredFuture<'_>> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| ExpiredFuture::try_from(p).unwrap())
             .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 }

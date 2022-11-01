@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use bytes::Bytes;
 use reqwest::Method;
 use rust_decimal::Decimal;
@@ -44,7 +46,32 @@ impl<'a> Request<true> for GetLatencyStatistics<'a> {
 
 pub struct GetLatencyStatisticsResponse(Bytes);
 
-response!(GetLatencyStatisticsResponse, Vec<LatencyStatsPartial<'a>>);
+response!(
+    GetLatencyStatisticsResponse,
+    Vec<LatencyStats>,
+    Vec<LatencyStatsPartial<'a>>
+);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct LatencyStats {
+    pub bursty: bool,
+    pub p50: Decimal,
+    pub request_count: u64,
+}
+
+impl<'a> TryFrom<LatencyStatsPartial<'a>> for LatencyStats {
+    type Error = serde_json::Error;
+
+    fn try_from(val: LatencyStatsPartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            bursty: val.bursty.deserialize()?,
+            p50: val.p50.deserialize()?,
+            request_count: val.request_count.deserialize()?,
+        })
+    }
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -66,28 +93,6 @@ mod tests {
 
     use super::*;
 
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct LatencyStats {
-        pub bursty: bool,
-        pub p50: Decimal,
-        pub request_count: u64,
-    }
-
-    impl<'a> TryFrom<LatencyStatsPartial<'a>> for LatencyStats {
-        type Error = serde_json::Error;
-
-        fn try_from(val: LatencyStatsPartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                bursty: val.bursty.deserialize()?,
-                p50: val.p50.deserialize()?,
-                request_count: val.request_count.deserialize()?,
-            })
-        }
-    }
-
     #[test]
     fn get_latency_statistics() {
         let json = r#"
@@ -107,11 +112,15 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<LatencyStats> = GetLatencyStatisticsResponse(json.as_bytes().into())
+        let response = GetLatencyStatisticsResponse(json.as_bytes().into());
+
+        let from_partial: Vec<LatencyStats> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| LatencyStats::try_from(p).unwrap())
             .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 }

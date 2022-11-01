@@ -1,3 +1,5 @@
+use std::convert::TryFrom;
+
 use bytes::Bytes;
 use reqwest::Method;
 use rust_decimal::Decimal;
@@ -28,7 +30,11 @@ impl Request<true> for GetBorrowRates {
 
 pub struct GetBorrowRatesResponse(Bytes);
 
-response!(GetBorrowRatesResponse, Vec<BorrowRatePartial<'a>>);
+response!(
+    GetBorrowRatesResponse,
+    Vec<BorrowRate<'a>>,
+    Vec<BorrowRatePartial<'a>>
+);
 
 /// Retrieve the total daily borrowed amounts for all spot margin
 /// enabled coins.
@@ -49,6 +55,7 @@ pub struct GetDailyBorrowedAmountsResponse(Bytes);
 
 response!(
     GetDailyBorrowedAmountsResponse,
+    Vec<BorrowAmount<'a>>,
     Vec<BorrowAmountPartial<'a>>
 );
 
@@ -75,7 +82,11 @@ impl<'a> Request<true> for GetBorrowForMarket<'a> {
 
 pub struct GetBorrowMarketsResponse(Bytes);
 
-response!(GetBorrowMarketsResponse, Vec<BorrowMarketPartial<'a>>);
+response!(
+    GetBorrowMarketsResponse,
+    Vec<BorrowMarket<'a>>,
+    Vec<BorrowMarketPartial<'a>>
+);
 
 /// Retrieve an account's borrow history.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -113,7 +124,32 @@ impl Request<true> for GetBorrowHistory {
 
 pub struct GetBorrowHistoryResponse(Bytes);
 
-response!(GetBorrowHistoryResponse, Vec<BorrowPaymentPartial<'a>>);
+response!(
+    GetBorrowHistoryResponse,
+    Vec<BorrowPayment<'a>>,
+    Vec<BorrowPaymentPartial<'a>>
+);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct BorrowRate<'a> {
+    pub coin: &'a str,
+    pub estimate: Decimal,
+    pub previous: Decimal,
+}
+
+impl<'a> TryFrom<BorrowRatePartial<'a>> for BorrowRate<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: BorrowRatePartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            coin: val.coin,
+            estimate: val.estimate.deserialize()?,
+            previous: val.previous.deserialize()?,
+        })
+    }
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -126,6 +162,25 @@ pub struct BorrowRatePartial<'a> {
     pub previous: Json<'a, Decimal>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct BorrowAmount<'a> {
+    pub coin: &'a str,
+    pub size: Decimal,
+}
+
+impl<'a> TryFrom<BorrowAmountPartial<'a>> for BorrowAmount<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: BorrowAmountPartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            coin: val.coin,
+            size: val.size.deserialize()?,
+        })
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
@@ -133,6 +188,31 @@ pub struct BorrowAmountPartial<'a> {
     pub coin: &'a str,
     #[serde(borrow)]
     pub size: Json<'a, Decimal>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct BorrowMarket<'a> {
+    pub coin: &'a str,
+    pub borrowed: Decimal,
+    pub free: Decimal,
+    pub estimated_rate: Decimal,
+    pub previous_rate: Decimal,
+}
+
+impl<'a> TryFrom<BorrowMarketPartial<'a>> for BorrowMarket<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: BorrowMarketPartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            coin: val.coin,
+            borrowed: val.borrowed.deserialize()?,
+            free: val.free.deserialize()?,
+            estimated_rate: val.estimated_rate.deserialize()?,
+            previous_rate: val.previous_rate.deserialize()?,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -148,6 +228,33 @@ pub struct BorrowMarketPartial<'a> {
     pub estimated_rate: Json<'a, Decimal>,
     #[serde(borrow)]
     pub previous_rate: Json<'a, Decimal>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct BorrowPayment<'a> {
+    pub coin: &'a str,
+    pub cost: Decimal,
+    pub fee_usd: Decimal,
+    pub rate: Decimal,
+    pub size: Decimal,
+    pub time: FtxDateTime,
+}
+
+impl<'a> TryFrom<BorrowPaymentPartial<'a>> for BorrowPayment<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: BorrowPaymentPartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            coin: val.coin,
+            cost: val.cost.deserialize()?,
+            fee_usd: val.fee_usd.deserialize()?,
+            rate: val.rate.deserialize()?,
+            size: val.size.deserialize()?,
+            time: val.time.deserialize()?,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -175,102 +282,6 @@ mod tests {
 
     use super::*;
 
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct BorrowRate<'a> {
-        pub coin: &'a str,
-        pub estimate: Decimal,
-        pub previous: Decimal,
-    }
-
-    impl<'a> TryFrom<BorrowRatePartial<'a>> for BorrowRate<'a> {
-        type Error = serde_json::Error;
-
-        fn try_from(val: BorrowRatePartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                coin: val.coin,
-                estimate: val.estimate.deserialize()?,
-                previous: val.previous.deserialize()?,
-            })
-        }
-    }
-
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct BorrowAmount<'a> {
-        pub coin: &'a str,
-        pub size: Decimal,
-    }
-
-    impl<'a> TryFrom<BorrowAmountPartial<'a>> for BorrowAmount<'a> {
-        type Error = serde_json::Error;
-
-        fn try_from(val: BorrowAmountPartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                coin: val.coin,
-                size: val.size.deserialize()?,
-            })
-        }
-    }
-
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct BorrowMarket<'a> {
-        pub coin: &'a str,
-        pub borrowed: Decimal,
-        pub free: Decimal,
-        pub estimated_rate: Decimal,
-        pub previous_rate: Decimal,
-    }
-
-    impl<'a> TryFrom<BorrowMarketPartial<'a>> for BorrowMarket<'a> {
-        type Error = serde_json::Error;
-
-        fn try_from(val: BorrowMarketPartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                coin: val.coin,
-                borrowed: val.borrowed.deserialize()?,
-                free: val.free.deserialize()?,
-                estimated_rate: val.estimated_rate.deserialize()?,
-                previous_rate: val.previous_rate.deserialize()?,
-            })
-        }
-    }
-
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct BorrowPayment<'a> {
-        pub coin: &'a str,
-        pub cost: Decimal,
-        pub fee_usd: Decimal,
-        pub rate: Decimal,
-        pub size: Decimal,
-        pub time: FtxDateTime,
-    }
-
-    impl<'a> TryFrom<BorrowPaymentPartial<'a>> for BorrowPayment<'a> {
-        type Error = serde_json::Error;
-
-        fn try_from(val: BorrowPaymentPartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                coin: val.coin,
-                cost: val.cost.deserialize()?,
-                fee_usd: val.fee_usd.deserialize()?,
-                rate: val.rate.deserialize()?,
-                size: val.size.deserialize()?,
-                time: val.time.deserialize()?,
-            })
-        }
-    }
-
     #[test]
     fn get_borrow_rates() {
         let json = r#"
@@ -285,12 +296,16 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<BorrowRate> = GetBorrowRatesResponse(json.as_bytes().into())
+        let response = GetBorrowRatesResponse(json.as_bytes().into());
+
+        let from_partial: Vec<BorrowRate> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| BorrowRate::try_from(p).unwrap())
             .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -306,12 +321,16 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<BorrowAmount> = GetDailyBorrowedAmountsResponse(json.as_bytes().into())
+        let response = GetDailyBorrowedAmountsResponse(json.as_bytes().into());
+
+        let from_partial: Vec<BorrowAmount> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| BorrowAmount::try_from(p).unwrap())
             .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -337,12 +356,16 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<BorrowMarket<'_>> = GetBorrowMarketsResponse(json.as_bytes().into())
+        let response = GetBorrowMarketsResponse(json.as_bytes().into());
+
+        let from_partial: Vec<BorrowMarket<'_>> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| BorrowMarket::try_from(p).unwrap())
             .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -362,11 +385,15 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<BorrowPayment<'_>> = GetBorrowHistoryResponse(json.as_bytes().into())
+        let response = GetBorrowHistoryResponse(json.as_bytes().into());
+
+        let from_partial: Vec<BorrowPayment<'_>> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| BorrowPayment::try_from(p).unwrap())
             .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 }

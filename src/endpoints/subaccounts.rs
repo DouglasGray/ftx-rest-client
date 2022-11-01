@@ -2,7 +2,7 @@ use bytes::Bytes;
 use reqwest::Method;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
+use std::{borrow::Cow, convert::TryFrom};
 
 use crate::{
     data::{FtxDateTime, Size},
@@ -42,7 +42,11 @@ impl Request<true> for GetSubaccounts {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetSubaccountsResponse(Bytes);
 
-response!(GetSubaccountsResponse, Vec<SubaccountPartial<'a>>);
+response!(
+    GetSubaccountsResponse,
+    Vec<Subaccount<'a>>,
+    Vec<SubaccountPartial<'a>>
+);
 
 /// Create a subaccount.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -67,7 +71,11 @@ impl<'a> Request<true> for CreateSubaccount<'a> {
 
 pub struct CreateSubaccountResponse(Bytes);
 
-response!(CreateSubaccountResponse, SubaccountPartial<'a>);
+response!(
+    CreateSubaccountResponse,
+    Subaccount<'a>,
+    SubaccountPartial<'a>
+);
 
 /// Change a subaccount name
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -93,7 +101,7 @@ impl<'a> Request<true> for ChangeSubaccountName<'a> {
 
 pub struct ChangeSubaccountNameResponse(Bytes);
 
-response!(ChangeSubaccountNameResponse, ());
+response!(ChangeSubaccountNameResponse, (), ());
 
 /// Delete subaccount
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -118,7 +126,7 @@ impl<'a> Request<true> for DeleteSubaccount<'a> {
 
 pub struct DeleteSubaccountResponse(Bytes);
 
-response!(DeleteSubaccountResponse, ());
+response!(DeleteSubaccountResponse, (), ());
 
 /// Retrieve a subaccount's balances.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -148,6 +156,7 @@ pub struct GetSubaccountBalancesResponse(Bytes);
 
 response!(
     GetSubaccountBalancesResponse,
+    Vec<SubaccountBalance<'a>>,
     Vec<SubaccountBalancePartial<'a>>
 );
 
@@ -179,8 +188,34 @@ pub struct TransferBetweenSubaccountsResponse(Bytes);
 
 response!(
     TransferBetweenSubaccountsResponse,
+    TransferDetails<'a>,
     TransferDetailsPartial<'a>
 );
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct Subaccount<'a> {
+    pub nickname: &'a str,
+    pub deletable: bool,
+    pub editable: bool,
+    pub special: bool,
+    pub competition: bool,
+}
+
+impl<'a> TryFrom<SubaccountPartial<'a>> for Subaccount<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: SubaccountPartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            nickname: val.nickname,
+            deletable: val.deletable.deserialize()?,
+            editable: val.editable.deserialize()?,
+            special: val.special.deserialize()?,
+            competition: val.competition.deserialize()?,
+        })
+    }
+}
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -195,6 +230,35 @@ pub struct SubaccountPartial<'a> {
     pub special: Json<'a, bool>,
     #[serde(borrow)]
     pub competition: Json<'a, bool>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct SubaccountBalance<'a> {
+    pub coin: &'a str,
+    pub free: Decimal,
+    pub total: Decimal,
+    pub spot_borrow: Decimal,
+    pub available_without_borrow: Decimal,
+    pub available_for_withdrawal: Decimal,
+    pub usd_value: Decimal,
+}
+
+impl<'a> TryFrom<SubaccountBalancePartial<'a>> for SubaccountBalance<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: SubaccountBalancePartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            coin: val.coin,
+            free: val.free.deserialize()?,
+            total: val.total.deserialize()?,
+            spot_borrow: val.spot_borrow.deserialize()?,
+            available_without_borrow: val.available_without_borrow.deserialize()?,
+            available_for_withdrawal: val.available_for_withdrawal.deserialize()?,
+            usd_value: val.usd_value.deserialize()?,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -214,6 +278,33 @@ pub struct SubaccountBalancePartial<'a> {
     pub available_for_withdrawal: Json<'a, Decimal>,
     #[serde(borrow)]
     pub usd_value: Json<'a, Decimal>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct TransferDetails<'a> {
+    pub id: u64,
+    pub coin: &'a str,
+    pub size: Decimal,
+    pub time: FtxDateTime,
+    pub notes: &'a str,
+    pub status: TransferStatus,
+}
+
+impl<'a> TryFrom<TransferDetailsPartial<'a>> for TransferDetails<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: TransferDetailsPartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: val.id.deserialize()?,
+            coin: val.coin,
+            size: val.size.deserialize()?,
+            time: val.time.deserialize()?,
+            notes: val.notes,
+            status: val.status.deserialize()?,
+        })
+    }
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
@@ -240,90 +331,6 @@ mod tests {
 
     use super::*;
 
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct Subaccount<'a> {
-        pub nickname: &'a str,
-        pub deletable: bool,
-        pub editable: bool,
-        pub special: bool,
-        pub competition: bool,
-    }
-
-    impl<'a> TryFrom<SubaccountPartial<'a>> for Subaccount<'a> {
-        type Error = serde_json::Error;
-
-        fn try_from(val: SubaccountPartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                nickname: val.nickname,
-                deletable: val.deletable.deserialize()?,
-                editable: val.editable.deserialize()?,
-                special: val.special.deserialize()?,
-                competition: val.competition.deserialize()?,
-            })
-        }
-    }
-
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct SubaccountBalance<'a> {
-        pub coin: &'a str,
-        pub free: Decimal,
-        pub total: Decimal,
-        pub spot_borrow: Decimal,
-        pub available_without_borrow: Decimal,
-        pub available_for_withdrawal: Decimal,
-        pub usd_value: Decimal,
-    }
-
-    impl<'a> TryFrom<SubaccountBalancePartial<'a>> for SubaccountBalance<'a> {
-        type Error = serde_json::Error;
-
-        fn try_from(val: SubaccountBalancePartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                coin: val.coin,
-                free: val.free.deserialize()?,
-                total: val.total.deserialize()?,
-                spot_borrow: val.spot_borrow.deserialize()?,
-                available_without_borrow: val.available_without_borrow.deserialize()?,
-                available_for_withdrawal: val.available_for_withdrawal.deserialize()?,
-                usd_value: val.usd_value.deserialize()?,
-            })
-        }
-    }
-
-    #[allow(dead_code)]
-    #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-    pub struct TransferDetails<'a> {
-        pub id: u64,
-        pub coin: &'a str,
-        pub size: Decimal,
-        pub time: FtxDateTime,
-        pub notes: &'a str,
-        pub status: TransferStatus,
-    }
-
-    impl<'a> TryFrom<TransferDetailsPartial<'a>> for TransferDetails<'a> {
-        type Error = serde_json::Error;
-
-        fn try_from(val: TransferDetailsPartial<'a>) -> Result<Self, Self::Error> {
-            Ok(Self {
-                id: val.id.deserialize()?,
-                coin: val.coin,
-                size: val.size.deserialize()?,
-                time: val.time.deserialize()?,
-                notes: val.notes,
-                status: val.status.deserialize()?,
-            })
-        }
-    }
-
     #[test]
     fn get_subaccounts() {
         let json = r#"
@@ -340,12 +347,16 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<Subaccount<'_>> = GetSubaccountsResponse(json.as_bytes().into())
+        let response = GetSubaccountsResponse(json.as_bytes().into());
+
+        let from_partial: Vec<Subaccount<'_>> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| Subaccount::try_from(p).unwrap())
             .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -362,11 +373,12 @@ mod tests {
   }
 }
 "#;
-        let _: Subaccount<'_> = CreateSubaccountResponse(json.as_bytes().into())
-            .deserialize_partial()
-            .unwrap()
-            .try_into()
-            .unwrap();
+        let response = CreateSubaccountResponse(json.as_bytes().into());
+
+        let from_partial: Subaccount<'_> =
+            response.deserialize_partial().unwrap().try_into().unwrap();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -390,9 +402,11 @@ mod tests {
   "result": null
 }
 "#;
-        let _: () = DeleteSubaccountResponse(json.as_bytes().into())
-            .deserialize_partial()
-            .unwrap();
+        let response = DeleteSubaccountResponse(json.as_bytes().into());
+
+        let from_partial: () = response.deserialize_partial().unwrap();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -413,12 +427,16 @@ mod tests {
   ]
 }
 "#;
-        let _: Vec<SubaccountBalance<'_>> = GetSubaccountBalancesResponse(json.as_bytes().into())
+        let response = GetSubaccountBalancesResponse(json.as_bytes().into());
+
+        let from_partial: Vec<SubaccountBalance<'_>> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()
             .map(|p| SubaccountBalance::try_from(p).unwrap())
             .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -436,10 +454,11 @@ mod tests {
   }
 }
 "#;
-        let _: TransferDetails<'_> = TransferBetweenSubaccountsResponse(json.as_bytes().into())
-            .deserialize_partial()
-            .unwrap()
-            .try_into()
-            .unwrap();
+        let response = TransferBetweenSubaccountsResponse(json.as_bytes().into());
+
+        let from_partial: TransferDetails<'_> =
+            response.deserialize_partial().unwrap().try_into().unwrap();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 }

@@ -57,9 +57,20 @@ pub trait Request<const AUTH: bool>: private::Sealed {
 }
 
 pub trait Response: From<Bytes> + AsRef<Bytes> + private::Sealed {
+    type Data<'a>
+    where
+        Self: 'a;
+
     type PartialData<'a>
     where
         Self: 'a;
+
+    fn deserialize<'a: 'de, 'de>(&'a self) -> Result<Self::Data<'a>, Error>
+    where
+        <Self as Response>::Data<'a>: Deserialize<'de>,
+    {
+        FtxResponse::try_from(self.as_ref().as_ref())?.deserialize()
+    }
 
     fn deserialize_partial<'a: 'de, 'de>(&'a self) -> Result<Self::PartialData<'a>, Error>
     where
