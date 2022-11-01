@@ -441,6 +441,7 @@ pub struct OrderPlaced<'a> {
     pub side: Side,
     pub size: Decimal,
     pub price: Decimal,
+    pub avg_fill_price: Option<Decimal>,
     pub filled_size: Decimal,
     pub remaining_size: Decimal,
     pub r#type: OrderType,
@@ -448,6 +449,7 @@ pub struct OrderPlaced<'a> {
     pub reduce_only: bool,
     pub ioc: bool,
     pub post_only: bool,
+    pub liquidation: Option<bool>,
     pub created_at: FtxDateTime,
 }
 
@@ -463,6 +465,7 @@ impl<'a> TryFrom<OrderPlacedPartial<'a>> for OrderPlaced<'a> {
             side: val.side.deserialize()?,
             size: val.size.deserialize()?,
             price: val.price.deserialize()?,
+            avg_fill_price: val.avg_fill_price.deserialize()?,
             filled_size: val.filled_size.deserialize()?,
             remaining_size: val.remaining_size.deserialize()?,
             r#type: val.r#type.deserialize()?,
@@ -470,6 +473,7 @@ impl<'a> TryFrom<OrderPlacedPartial<'a>> for OrderPlaced<'a> {
             reduce_only: val.reduce_only.deserialize()?,
             ioc: val.ioc.deserialize()?,
             post_only: val.post_only.deserialize()?,
+            liquidation: val.liquidation.deserialize()?,
             created_at: val.created_at.deserialize()?,
         })
     }
@@ -491,6 +495,8 @@ pub struct OrderPlacedPartial<'a> {
     #[serde(borrow)]
     pub price: Json<'a, Decimal>,
     #[serde(borrow)]
+    pub avg_fill_price: OptJson<'a, Decimal>,
+    #[serde(borrow)]
     pub filled_size: Json<'a, Decimal>,
     #[serde(borrow)]
     pub remaining_size: Json<'a, Decimal>,
@@ -504,6 +510,8 @@ pub struct OrderPlacedPartial<'a> {
     pub ioc: Json<'a, bool>,
     #[serde(borrow)]
     pub post_only: Json<'a, bool>,
+    #[serde(borrow)]
+    pub liquidation: OptJson<'a, bool>,
     #[serde(borrow)]
     pub created_at: Json<'a, FtxDateTime>,
 }
@@ -609,6 +617,7 @@ mod tests {
     "id": 9596912,
     "market": "XRP-PERP",
     "price": 0.306525,
+    "avgFillPrice": null,
     "remainingSize": 31431,
     "side": "sell",
     "size": 31431,
@@ -617,6 +626,7 @@ mod tests {
     "reduceOnly": false,
     "ioc": false,
     "postOnly": false,
+    "liquidation": false,
     "clientId": null
   }
 }
@@ -641,6 +651,7 @@ mod tests {
     "id": 9596932,
     "market": "XRP-PERP",
     "price": 0.326525,
+    "avgFillPrice": null,
     "remainingSize": 31431,
     "side": "sell",
     "size": 31431,
@@ -649,6 +660,7 @@ mod tests {
     "reduceOnly": false,
     "ioc": false,
     "postOnly": false,
+    "liquidation": false,
     "clientId": null
   }
 }

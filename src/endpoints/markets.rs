@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, convert::TryFrom, num::NonZeroU8};
 
 use crate::{
-    data::{FtxDateTime, Price, Side, Size, UnixTimestamp, WindowLength},
+    data::{FtxDateTime, FutureType, Price, Side, Size, UnixTimestamp, WindowLength},
     private::Sealed,
     Json, OptJson, QueryParams, Request,
 };
@@ -226,6 +226,7 @@ response!(GetCandlesResponse, Vec<Candle>, Vec<CandlePartial<'a>>);
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct Market<'a> {
     pub r#type: MarketType,
+    pub future_type: Option<FutureType>,
     pub name: &'a str,
     pub underlying: Option<&'a str>,
     pub base_currency: Option<&'a str>,
@@ -261,6 +262,7 @@ impl<'a> TryFrom<MarketPartial<'a>> for Market<'a> {
             name: val.name,
             underlying: val.underlying,
             r#type: val.r#type.deserialize()?,
+            future_type: val.future_type.deserialize()?,
             enabled: val.enabled.deserialize()?,
             post_only: val.post_only.deserialize()?,
             price_increment: val.price_increment.deserialize()?,
@@ -298,6 +300,8 @@ pub struct MarketPartial<'a> {
     pub quote_currency: Option<&'a str>,
     #[serde(borrow)]
     pub r#type: Json<'a, MarketType>,
+    #[serde(borrow)]
+    pub future_type: OptJson<'a, FutureType>,
     #[serde(borrow)]
     pub enabled: Json<'a, bool>,
     #[serde(borrow)]
@@ -423,7 +427,7 @@ pub struct TradePartial<'a> {
     pub time: Json<'a, FtxDateTime>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct Candle {
@@ -433,7 +437,7 @@ pub struct Candle {
     pub open: Decimal,
     pub volume: Decimal,
     pub start_time: FtxDateTime,
-    pub time: UnixTimestamp,
+    pub time: f64,
 }
 
 impl<'a> TryFrom<CandlePartial<'a>> for Candle {
@@ -469,7 +473,7 @@ pub struct CandlePartial<'a> {
     #[serde(borrow)]
     pub start_time: Json<'a, FtxDateTime>,
     #[serde(borrow)]
-    pub time: Json<'a, UnixTimestamp>,
+    pub time: Json<'a, f64>,
 }
 
 #[cfg(test)]
@@ -602,7 +606,7 @@ mod tests {
   "result": [
     {
       "startTime": "2022-04-03T14:43:00+00:00",
-      "time": 1648996980000,
+      "time": 1648996980000.0,
       "open": 46371,
       "high": 46381,
       "low": 46371,
@@ -614,7 +618,7 @@ mod tests {
 "#;
         let response = GetCandlesResponse(json.as_bytes().into());
 
-        let from_partial: Vec<Candle> = response
+        let from_partial: Vec<_> = response
             .deserialize_partial()
             .unwrap()
             .into_iter()

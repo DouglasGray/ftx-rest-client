@@ -37,6 +37,19 @@ pub struct AccountName<'a>(pub &'a str);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct CancelAckMsg<'a>(pub &'a str);
 
+/// Future type.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum FutureType {
+    #[serde(rename = "perpetual")]
+    Perpetual,
+    #[serde(rename = "future")]
+    Future,
+    #[serde(rename = "move")]
+    Move,
+    #[serde(rename = "prediction")]
+    Prediction,
+}
+
 /// Trade or order direction.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Side {

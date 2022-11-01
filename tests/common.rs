@@ -36,9 +36,9 @@ where
         .unwrap();
 
     if let Ok(json) = serde_json::from_slice::<serde_json::Value>(response.as_ref()) {
-        println!("{:#?}", json);
+        println!("{:?}", json);
     } else {
-        println!("{:#?}", response.as_ref());
+        println!("{:?}", response.as_ref());
     }
 
     response

@@ -5,7 +5,7 @@ use reqwest::Method;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
-use crate::{private::Sealed, Json, QueryParams, Request};
+use crate::{private::Sealed, Json, OptJson, QueryParams, Request};
 
 use super::macros::response;
 
@@ -57,8 +57,11 @@ response!(
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct LatencyStats {
     pub bursty: bool,
-    pub p50: Decimal,
+    pub proxied: bool,
+    pub p50: Option<Decimal>,
     pub request_count: u64,
+    pub success_count: u64,
+    pub success_p50: Option<Decimal>,
 }
 
 impl<'a> TryFrom<LatencyStatsPartial<'a>> for LatencyStats {
@@ -67,8 +70,11 @@ impl<'a> TryFrom<LatencyStatsPartial<'a>> for LatencyStats {
     fn try_from(val: LatencyStatsPartial<'a>) -> Result<Self, Self::Error> {
         Ok(Self {
             bursty: val.bursty.deserialize()?,
+            proxied: val.proxied.deserialize()?,
             p50: val.p50.deserialize()?,
             request_count: val.request_count.deserialize()?,
+            success_count: val.success_count.deserialize()?,
+            success_p50: val.success_p50.deserialize()?,
         })
     }
 }
@@ -80,9 +86,15 @@ pub struct LatencyStatsPartial<'a> {
     #[serde(borrow)]
     pub bursty: Json<'a, bool>,
     #[serde(borrow)]
-    pub p50: Json<'a, Decimal>,
+    pub proxied: Json<'a, bool>,
+    #[serde(borrow)]
+    pub p50: OptJson<'a, Decimal>,
     #[serde(borrow)]
     pub request_count: Json<'a, u64>,
+    #[serde(borrow)]
+    pub success_count: Json<'a, u64>,
+    #[serde(borrow)]
+    pub success_p50: OptJson<'a, Decimal>,
 }
 
 #[cfg(test)]
@@ -101,13 +113,19 @@ mod tests {
   "result": [
     {
       "bursty": true,
+      "proxied": true,
       "p50": 0.059,
-      "requestCount": 43
+      "requestCount": 43,
+      "successCount": 0,
+      "successP50": null
     },
     {
       "bursty": false,
+      "proxied": true,
       "p50": 0.047,
-      "requestCount": 27
+      "requestCount": 27,
+      "successCount": 27,
+      "successP50": 0.047
     }
   ]
 }

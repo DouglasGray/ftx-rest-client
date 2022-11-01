@@ -82,8 +82,11 @@ pub struct Coin<'a> {
     pub is_etf: bool,
     pub tokenized_equity: Option<bool>,
     pub spot_margin: bool,
+    pub spot_margin_imf: Option<Decimal>,
+    pub spot_margin_imf_factor: Option<Decimal>,
     pub collateral: bool,
     pub collateral_weight: Decimal,
+    pub initial_collateral_weight: Decimal,
     pub usd_fungible: bool,
     pub can_convert: bool,
     pub can_deposit: bool,
@@ -99,9 +102,9 @@ pub struct Coin<'a> {
     pub image_url: Option<&'a str>,
     pub nft_quote_currency_eligible: bool,
     pub imf_weight: Decimal,
-    // Keep this as a float since the values returned occasionally
-    // have a crazy scale and can't be parsed into a `Decimal`.
-    index_price: f64,
+    pub mmf_weight: Decimal,
+    // Keep as f64 since sometimes the scale is too large to be parsed into a `Decimal`
+    pub index_price: f64,
 }
 
 impl<'a> TryFrom<CoinPartial<'a>> for Coin<'a> {
@@ -134,6 +137,10 @@ impl<'a> TryFrom<CoinPartial<'a>> for Coin<'a> {
             nft_quote_currency_eligible: val.nft_quote_currency_eligible.deserialize()?,
             imf_weight: val.imf_weight.deserialize()?,
             index_price: val.index_price.deserialize()?,
+            spot_margin_imf: val.spot_margin_imf.deserialize()?,
+            spot_margin_imf_factor: val.spot_margin_imf_factor.deserialize()?,
+            initial_collateral_weight: val.initial_collateral_weight.deserialize()?,
+            mmf_weight: val.mmf_weight.deserialize()?,
         })
     }
 }
@@ -155,9 +162,15 @@ pub struct CoinPartial<'a> {
     #[serde(borrow)]
     pub spot_margin: Json<'a, bool>,
     #[serde(borrow)]
+    pub spot_margin_imf: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub spot_margin_imf_factor: OptJson<'a, Decimal>,
+    #[serde(borrow)]
     pub collateral: Json<'a, bool>,
     #[serde(borrow)]
     pub collateral_weight: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub initial_collateral_weight: Json<'a, Decimal>,
     #[serde(borrow)]
     pub usd_fungible: Json<'a, bool>,
     #[serde(borrow)]
@@ -182,10 +195,11 @@ pub struct CoinPartial<'a> {
     pub nft_quote_currency_eligible: Json<'a, bool>,
     #[serde(borrow)]
     pub imf_weight: Json<'a, Decimal>,
-    // Keep this as a float since the values returned occasionally
-    // have a crazy scale and can't be parsed into a `Json<'a, Decimal>`.
     #[serde(borrow)]
-    index_price: Json<'a, f64>,
+    pub mmf_weight: Json<'a, Decimal>,
+    // Keep as f64 since sometimes the scale is too large to be parsed into a `Decimal`
+    #[serde(borrow)]
+    pub index_price: Json<'a, f64>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -257,6 +271,7 @@ mod tests {
       "canWithdraw": false,
       "collateral": true,
       "collateralWeight": 1,
+      "initialCollateralWeight": 1,
       "creditTo": null,
       "erc20Contract": null,
       "fiat": true,
@@ -272,9 +287,12 @@ mod tests {
       "nftQuoteCurrencyEligible": true,
       "splMint": null,
       "spotMargin": true,
+      "spotMarginImf": 0.1,
+      "spotMarginImfFactor": 0.0,
       "trc20Contract": null,
       "usdFungible": true,
-      "imfWeight": 1.0
+      "imfWeight": 1.0,
+      "mmfWeight": 1.0
     }
   ]
 }

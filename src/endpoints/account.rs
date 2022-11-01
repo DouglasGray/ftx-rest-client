@@ -191,6 +191,7 @@ pub struct AccountInformation<'a> {
     pub maker_fee: Decimal,
     pub taker_fee: Decimal,
     pub total_account_value: Decimal,
+    pub total_account_nav: Decimal,
     pub total_position_size: Decimal,
     pub charge_interest_on_negative_usd: bool,
     pub position_limit: Option<Decimal>,
@@ -223,6 +224,7 @@ impl<'a> TryFrom<AccountInformationPartial<'a>> for AccountInformation<'a> {
             maker_fee: v.maker_fee.deserialize()?,
             taker_fee: v.taker_fee.deserialize()?,
             total_account_value: v.total_account_value.deserialize()?,
+            total_account_nav: v.total_account_nav.deserialize()?,
             total_position_size: v.total_position_size.deserialize()?,
             charge_interest_on_negative_usd: v.charge_interest_on_negative_usd.deserialize()?,
             position_limit: v.position_limit.deserialize()?,
@@ -274,6 +276,8 @@ pub struct AccountInformationPartial<'a> {
     pub taker_fee: Json<'a, Decimal>,
     #[serde(borrow)]
     pub total_account_value: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub total_account_nav: Json<'a, Decimal>,
     #[serde(borrow)]
     pub total_position_size: Json<'a, Decimal>,
     #[serde(borrow)]
@@ -420,6 +424,7 @@ mod tests {
     "makerFee": 0.00019,
     "takerFee":0.000665,
     "totalAccountValue": 3568180.98341129,
+    "totalAccountNav": 3568180.98341129,
     "totalPositionSize": 6384939.6992,
     "marginFraction": null,
     "openMarginFraction": null,

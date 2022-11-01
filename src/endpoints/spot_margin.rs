@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use crate::{
     data::{FtxDateTime, UnixTimestamp},
     private::Sealed,
-    Json, Request,
+    Json, OptJson, Request,
 };
 
 use super::macros::response;
@@ -84,8 +84,8 @@ pub struct GetBorrowMarketsResponse(Bytes);
 
 response!(
     GetBorrowMarketsResponse,
-    Vec<BorrowMarket<'a>>,
-    Vec<BorrowMarketPartial<'a>>
+    Option<Vec<BorrowMarket<'a>>>,
+    Option<Vec<BorrowMarketPartial<'a>>>
 );
 
 /// Retrieve an account's borrow history.
@@ -137,6 +137,7 @@ pub struct BorrowRate<'a> {
     pub coin: &'a str,
     pub estimate: Decimal,
     pub previous: Decimal,
+    pub average_24hr: Option<Decimal>,
 }
 
 impl<'a> TryFrom<BorrowRatePartial<'a>> for BorrowRate<'a> {
@@ -147,6 +148,7 @@ impl<'a> TryFrom<BorrowRatePartial<'a>> for BorrowRate<'a> {
             coin: val.coin,
             estimate: val.estimate.deserialize()?,
             previous: val.previous.deserialize()?,
+            average_24hr: val.average_24hr.deserialize()?,
         })
     }
 }
@@ -160,6 +162,8 @@ pub struct BorrowRatePartial<'a> {
     pub estimate: Json<'a, Decimal>,
     #[serde(borrow)]
     pub previous: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub average_24hr: OptJson<'a, Decimal>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -291,7 +295,8 @@ mod tests {
     {
       "coin": "BTC",
       "estimate": 1.45e-06,
-      "previous": 1.44e-06
+      "previous": 1.44e-06,
+      "average24hr": 1.44e-06
     }
   ]
 }
@@ -361,11 +366,12 @@ mod tests {
         let from_partial: Vec<BorrowMarket<'_>> = response
             .deserialize_partial()
             .unwrap()
+            .unwrap()
             .into_iter()
             .map(|p| BorrowMarket::try_from(p).unwrap())
             .collect();
 
-        assert_eq!(response.deserialize().unwrap(), from_partial);
+        assert_eq!(response.deserialize().unwrap().unwrap(), from_partial);
     }
 
     #[test]

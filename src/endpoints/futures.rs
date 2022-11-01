@@ -6,7 +6,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{FtxDateTime, UnixTimestamp},
+    data::{FtxDateTime, FutureType, UnixTimestamp},
     private::Sealed,
     Json, OptJson, Request,
 };
@@ -23,19 +23,6 @@ macro_rules! get_future_stats_path {
     () => {
         "/futures/{future}/stats"
     };
-}
-
-/// Future type.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum FutureType {
-    #[serde(rename = "perpetual")]
-    Perpetual,
-    #[serde(rename = "future")]
-    Future,
-    #[serde(rename = "move")]
-    Move,
-    #[serde(rename = "prediction")]
-    Prediction,
 }
 
 /// Particular group a future may belong to.
@@ -210,6 +197,7 @@ pub struct Future<'a> {
     pub expired: bool,
     pub enabled: bool,
     pub post_only: bool,
+    pub close_only: bool,
     pub price_increment: Decimal,
     pub size_increment: Decimal,
     pub last: Option<Decimal>,
@@ -218,6 +206,8 @@ pub struct Future<'a> {
     pub index: Option<Decimal>,
     pub mark: Option<Decimal>,
     pub imf_factor: Decimal,
+    pub imf_weight: Decimal,
+    pub mmf_weight: Decimal,
     pub lower_bound: Option<Decimal>,
     pub upper_bound: Option<Decimal>,
     pub margin_price: Option<Decimal>,
@@ -249,6 +239,7 @@ impl<'a> TryFrom<FuturePartial<'a>> for Future<'a> {
             expired: val.expired.deserialize()?,
             enabled: val.enabled.deserialize()?,
             post_only: val.post_only.deserialize()?,
+            close_only: val.close_only.deserialize()?,
             price_increment: val.price_increment.deserialize()?,
             size_increment: val.size_increment.deserialize()?,
             last: val.last.deserialize()?,
@@ -257,6 +248,8 @@ impl<'a> TryFrom<FuturePartial<'a>> for Future<'a> {
             index: val.index.deserialize()?,
             mark: val.mark.deserialize()?,
             imf_factor: val.imf_factor.deserialize()?,
+            imf_weight: val.imf_weight.deserialize()?,
+            mmf_weight: val.mmf_weight.deserialize()?,
             lower_bound: val.lower_bound.deserialize()?,
             upper_bound: val.upper_bound.deserialize()?,
             margin_price: val.margin_price.deserialize()?,
@@ -297,6 +290,8 @@ pub struct FuturePartial<'a> {
     #[serde(borrow)]
     pub post_only: Json<'a, bool>,
     #[serde(borrow)]
+    pub close_only: Json<'a, bool>,
+    #[serde(borrow)]
     pub price_increment: Json<'a, Decimal>,
     #[serde(borrow)]
     pub size_increment: Json<'a, Decimal>,
@@ -312,6 +307,10 @@ pub struct FuturePartial<'a> {
     pub mark: OptJson<'a, Decimal>,
     #[serde(borrow)]
     pub imf_factor: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub imf_weight: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub mmf_weight: Json<'a, Decimal>,
     #[serde(borrow)]
     pub lower_bound: OptJson<'a, Decimal>,
     #[serde(borrow)]
@@ -435,14 +434,18 @@ pub struct ExpiredFuture<'a> {
     pub expired: bool,
     pub enabled: bool,
     pub post_only: bool,
+    pub close_only: bool,
     pub price_increment: Decimal,
     pub size_increment: Decimal,
     pub last: Option<Decimal>,
     pub bid: Option<Decimal>,
     pub ask: Option<Decimal>,
     pub index: Option<Decimal>,
+    pub index_adjustment: Option<Decimal>,
     pub mark: Option<Decimal>,
     pub imf_factor: Decimal,
+    pub imf_weight: Decimal,
+    pub mmf_weight: Decimal,
     pub lower_bound: Option<Decimal>,
     pub upper_bound: Option<Decimal>,
     pub margin_price: Option<Decimal>,
@@ -467,14 +470,18 @@ impl<'a> TryFrom<ExpiredFuturePartial<'a>> for ExpiredFuture<'a> {
             expired: val.expired.deserialize()?,
             enabled: val.enabled.deserialize()?,
             post_only: val.post_only.deserialize()?,
+            close_only: val.close_only.deserialize()?,
             price_increment: val.price_increment.deserialize()?,
             size_increment: val.size_increment.deserialize()?,
             last: val.last.deserialize()?,
             bid: val.bid.deserialize()?,
             ask: val.ask.deserialize()?,
             index: val.index.deserialize()?,
+            index_adjustment: val.index_adjustment.deserialize()?,
             mark: val.mark.deserialize()?,
             imf_factor: val.imf_factor.deserialize()?,
+            imf_weight: val.imf_weight.deserialize()?,
+            mmf_weight: val.mmf_weight.deserialize()?,
             lower_bound: val.lower_bound.deserialize()?,
             upper_bound: val.upper_bound.deserialize()?,
             margin_price: val.margin_price.deserialize()?,
@@ -508,6 +515,8 @@ pub struct ExpiredFuturePartial<'a> {
     #[serde(borrow)]
     pub post_only: Json<'a, bool>,
     #[serde(borrow)]
+    pub close_only: Json<'a, bool>,
+    #[serde(borrow)]
     pub price_increment: Json<'a, Decimal>,
     #[serde(borrow)]
     pub size_increment: Json<'a, Decimal>,
@@ -520,9 +529,15 @@ pub struct ExpiredFuturePartial<'a> {
     #[serde(borrow)]
     pub index: OptJson<'a, Decimal>,
     #[serde(borrow)]
+    pub index_adjustment: OptJson<'a, Decimal>,
+    #[serde(borrow)]
     pub mark: OptJson<'a, Decimal>,
     #[serde(borrow)]
     pub imf_factor: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub imf_weight: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub mmf_weight: Json<'a, Decimal>,
     #[serde(borrow)]
     pub lower_bound: OptJson<'a, Decimal>,
     #[serde(borrow)]
@@ -559,6 +574,7 @@ mod tests {
       "expired": false,
       "enabled": true,
       "postOnly": false,
+      "closeOnly": false,
       "priceIncrement": 1,
       "sizeIncrement": 0.0001,
       "last": 299,
@@ -567,6 +583,8 @@ mod tests {
       "index": 46088.731248179,
       "mark": 299,
       "imfFactor": 0.002,
+      "imfWeight": 1,
+      "mmfWeight": 1,
       "lowerBound": 1,
       "upperBound": 4881,
       "underlyingDescription": "Bitcoin",
@@ -613,6 +631,7 @@ mod tests {
       "expired": false,
       "enabled": true,
       "postOnly": false,
+      "closeOnly": false,
       "priceIncrement": 1,
       "sizeIncrement": 0.0001,
       "last": 299,
@@ -621,6 +640,8 @@ mod tests {
       "index": 46088.731248179,
       "mark": 299,
       "imfFactor": 0.002,
+      "imfWeight": 1,
+      "mmfWeight": 1,
       "lowerBound": 1,
       "upperBound": 4881,
       "underlyingDescription": "Bitcoin",
@@ -711,14 +732,18 @@ mod tests {
       "expired": true,
       "enabled": false,
       "postOnly": false,
+      "closeOnly": false,
       "priceIncrement": 1,
       "sizeIncrement": 0.0001,
       "last": null,
       "bid": null,
       "ask": null,
       "index": 46300.342396571,
+      "indexAdjustment": 0.342396571,
       "mark": 1883.99287306601,
       "imfFactor": 0.002,
+      "imfWeight": 1,
+      "mmfWeight": 1,
       "lowerBound": 1,
       "upperBound": 6561,
       "underlyingDescription": "Bitcoin",
