@@ -13,7 +13,7 @@ use std::convert::TryInto;
 async fn get_markets() {
     common::make_request(&GetMarkets)
         .await
-        .deserialize_partial()
+        .deserialize()
         .unwrap();
 }
 
@@ -22,7 +22,7 @@ async fn get_markets() {
 async fn get_market() {
     common::make_request(&GetMarket { market: "BTC-PERP" })
         .await
-        .deserialize_partial()
+        .deserialize()
         .unwrap();
 }
 
@@ -34,7 +34,7 @@ async fn get_orderbook() {
         depth: Some(BookDepth::new(20.try_into().unwrap()).unwrap()),
     })
     .await
-    .deserialize_partial()
+    .deserialize()
     .unwrap();
 }
 
@@ -47,7 +47,7 @@ async fn get_trades() {
         end_time: None,
     })
     .await
-    .deserialize_partial()
+    .deserialize()
     .unwrap();
 }
 
@@ -61,6 +61,6 @@ async fn get_candles() {
         end_time: None,
     })
     .await
-    .deserialize_partial()
+    .deserialize()
     .unwrap();
 }

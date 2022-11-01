@@ -3,7 +3,6 @@ mod common;
 use common::{AuthTestClient, CONFIG};
 
 use ftx_rest_client::{
-    data::NonNegativeDecimal,
     endpoints::subaccounts::{
         ChangeSubaccountName, CreateSubaccount, DeleteSubaccount, GetSubaccountBalances,
         GetSubaccounts, TransferBetweenSubaccounts,
@@ -25,7 +24,7 @@ async fn get_subaccounts() {
 
     common::make_auth_request(&client, &GetSubaccounts)
         .await
-        .deserialize_partial()
+        .deserialize()
         .unwrap();
 }
 
@@ -40,7 +39,7 @@ async fn get_subaccount_balances() {
 
     common::make_auth_request(&client, &GetSubaccountBalances { nickname: "main" })
         .await
-        .deserialize_partial()
+        .deserialize()
         .unwrap();
 }
 
@@ -58,7 +57,7 @@ async fn create_subaccount_then_change_its_name_then_delete_it() {
 
     common::make_auth_request(&client, &CreateSubaccount { nickname: NICKNAME })
         .await
-        .deserialize_partial()
+        .deserialize()
         .unwrap();
 
     // Put test in separate task so we can easily clean up the
@@ -74,7 +73,7 @@ async fn create_subaccount_then_change_its_name_then_delete_it() {
             },
         )
         .await
-        .deserialize_partial()
+        .deserialize()
         .unwrap();
 
         common::make_auth_request(
@@ -84,7 +83,7 @@ async fn create_subaccount_then_change_its_name_then_delete_it() {
             },
         )
         .await
-        .deserialize_partial()
+        .deserialize()
         .unwrap();
     })
     .await;
@@ -94,7 +93,7 @@ async fn create_subaccount_then_change_its_name_then_delete_it() {
     if res.is_err() {
         common::make_auth_request(&client, &DeleteSubaccount { nickname: NICKNAME })
             .await
-            .deserialize_partial()
+            .deserialize()
             .unwrap();
     }
 
@@ -115,15 +114,15 @@ async fn try_transfer_one_usd_from_main_to_subaccount_then_back() {
     let should_transfer =
         common::make_auth_request(&client, &GetSubaccountBalances { nickname: "main" })
             .await
-            .deserialize_partial()
+            .deserialize()
             .unwrap()
             .iter()
-            .any(|b| b.coin == "USD" && b.free >= NonNegativeDecimal::from(1u64));
+            .any(|b| b.coin == "USD" && b.free >= Decimal::ONE);
 
     if should_transfer {
         common::make_auth_request(&client, &CreateSubaccount { nickname: NICKNAME })
             .await
-            .deserialize_partial()
+            .deserialize()
             .unwrap();
 
         // Put test in separate task so we can easily clean up the
@@ -141,7 +140,7 @@ async fn try_transfer_one_usd_from_main_to_subaccount_then_back() {
                 },
             )
             .await
-            .deserialize_partial()
+            .deserialize()
             .unwrap();
 
             common::make_auth_request(
@@ -154,14 +153,14 @@ async fn try_transfer_one_usd_from_main_to_subaccount_then_back() {
                 },
             )
             .await
-            .deserialize_partial()
+            .deserialize()
             .unwrap();
         })
         .await;
 
         common::make_auth_request(&client, &DeleteSubaccount { nickname: NICKNAME })
             .await
-            .deserialize_partial()
+            .deserialize()
             .unwrap();
 
         res.unwrap()

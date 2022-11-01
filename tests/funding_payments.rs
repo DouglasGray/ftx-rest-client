@@ -20,6 +20,6 @@ async fn get_funding_payments() {
         },
     )
     .await
-    .deserialize_partial()
+    .deserialize()
     .unwrap();
 }

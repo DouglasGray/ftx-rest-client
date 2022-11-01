@@ -18,7 +18,7 @@ async fn get_borrow_rates() {
 
     common::make_auth_request(&AuthTestClient::new_for_main(), &GetBorrowRates)
         .await
-        .deserialize_partial()
+        .deserialize()
         .unwrap();
 }
 
@@ -31,7 +31,7 @@ async fn get_daily_borrowed_amounts() {
 
     common::make_auth_request(&AuthTestClient::new_for_main(), &GetDailyBorrowedAmounts)
         .await
-        .deserialize_partial()
+        .deserialize()
         .unwrap();
 }
 
@@ -50,7 +50,7 @@ async fn get_borrow_for_market() {
         },
     )
     .await
-    .deserialize_partial()
+    .deserialize()
     .unwrap();
 
     common::make_auth_request(
@@ -60,7 +60,7 @@ async fn get_borrow_for_market() {
         },
     )
     .await
-    .deserialize_partial()
+    .deserialize()
     .unwrap();
 }
 
@@ -79,6 +79,6 @@ async fn get_borrow_history() {
         },
     )
     .await
-    .deserialize_partial()
+    .deserialize()
     .unwrap();
 }
