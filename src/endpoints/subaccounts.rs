@@ -4,11 +4,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, convert::TryFrom};
 
-use crate::{
-    data::{FtxDateTime, Size},
-    private::Sealed,
-    Json, Request,
-};
+use crate::{data::FtxDateTime, private::Sealed, Json, Request};
 
 use super::macros::response;
 
@@ -165,7 +161,7 @@ response!(
 #[serde(rename_all = "camelCase")]
 pub struct TransferBetweenSubaccounts<'a> {
     pub coin: &'a str,
-    pub size: Size,
+    pub size: Decimal,
     pub source: Option<&'a str>,
     pub destination: Option<&'a str>,
 }

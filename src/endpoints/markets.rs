@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::{borrow::Cow, convert::TryFrom, num::NonZeroU8};
 
 use crate::{
-    data::{FtxDateTime, FutureType, Price, Side, Size, UnixTimestamp, WindowLength},
+    data::{FtxDateTime, FutureType, Side, UnixTimestamp, WindowLength},
     private::Sealed,
     Json, OptJson, QueryParams, Request,
 };
@@ -35,6 +35,9 @@ macro_rules! get_candles_path {
         "/markets/{market}/candles"
     };
 }
+
+pub type Price = Decimal;
+pub type Size = Decimal;
 
 /// Market type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]

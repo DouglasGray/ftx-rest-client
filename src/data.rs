@@ -1,4 +1,3 @@
-use rust_decimal::Decimal;
 use serde::{de, ser, Deserialize, Deserializer, Serialize};
 use std::{
     convert::TryFrom,
@@ -8,9 +7,6 @@ use std::{
     time::{SystemTime, UNIX_EPOCH},
 };
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
-
-pub type Price = Decimal;
-pub type Size = Decimal;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Exchange<'a>(pub &'a str);
@@ -124,7 +120,7 @@ impl UnixTimestamp {
         Self(ts)
     }
 
-    pub fn now() -> Self {
+    pub fn from_system_time() -> Self {
         Self(
             SystemTime::now()
                 .duration_since(UNIX_EPOCH)
@@ -144,15 +140,9 @@ impl From<u128> for UnixTimestamp {
     }
 }
 
-impl TryFrom<f64> for UnixTimestamp {
-    type Error = InvalidUnixTimestamp;
-
-    fn try_from(ts: f64) -> Result<Self, Self::Error> {
-        if ts.is_sign_negative() {
-            Err(ts.into())
-        } else {
-            Ok((ts as u128).into())
-        }
+impl From<UnixTimestamp> for u128 {
+    fn from(ts: UnixTimestamp) -> Self {
+        ts.0
     }
 }
 
@@ -164,44 +154,48 @@ impl TryFrom<OffsetDateTime> for UnixTimestamp {
 
         u128::try_from(ts / 1_000_000)
             .map(Into::into)
-            .map_err(|_| ts.into())
+            .map_err(|_| InvalidUnixTimestamp::Int128(ts))
     }
 }
 
-impl From<UnixTimestamp> for u128 {
-    fn from(ts: UnixTimestamp) -> Self {
-        ts.0
+impl TryFrom<i64> for UnixTimestamp {
+    type Error = InvalidUnixTimestamp;
+
+    fn try_from(value: i64) -> Result<Self, Self::Error> {
+        if value.is_negative() {
+            Err(InvalidUnixTimestamp::Int128(value.into()))
+        } else {
+            Ok((value as u128).into())
+        }
+    }
+}
+
+impl TryFrom<i128> for UnixTimestamp {
+    type Error = InvalidUnixTimestamp;
+
+    fn try_from(value: i128) -> Result<Self, Self::Error> {
+        if value.is_negative() {
+            Err(InvalidUnixTimestamp::Int128(value))
+        } else {
+            Ok((value as u128).into())
+        }
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum InvalidUnixTimestamp {
     Int128(i128),
-    Float64(f64),
 }
 
 impl fmt::Display for InvalidUnixTimestamp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Int128(ts) => write!(f, "invalid UNIX timestamp {}", ts),
-            Self::Float64(ts) => write!(f, "invalid UNIX timestamp {}", ts),
         }
     }
 }
 
 impl StdError for InvalidUnixTimestamp {}
-
-impl From<i128> for InvalidUnixTimestamp {
-    fn from(ts: i128) -> Self {
-        Self::Int128(ts)
-    }
-}
-
-impl From<f64> for InvalidUnixTimestamp {
-    fn from(ts: f64) -> Self {
-        Self::Float64(ts)
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct FtxDateTime(OffsetDateTime);
