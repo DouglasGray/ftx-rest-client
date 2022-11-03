@@ -36,6 +36,29 @@ response!(
     Vec<BorrowRatePartial<'a>>
 );
 
+/// Retrieve the latest lending rates for all spot margin enabled
+/// coins.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct GetLendingRates;
+
+impl Sealed for GetLendingRates {}
+
+impl Request<false> for GetLendingRates {
+    const PATH: &'static str = "/spot_margin/lending_rates";
+
+    const METHOD: Method = Method::GET;
+
+    type Response = GetLendingRatesResponse;
+}
+
+pub struct GetLendingRatesResponse(Bytes);
+
+response!(
+    GetLendingRatesResponse,
+    Vec<LendingRate<'a>>,
+    Vec<LendingRatePartial<'a>>
+);
+
 /// Retrieve the total daily borrowed amounts for all spot margin
 /// enabled coins.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -157,6 +180,42 @@ impl<'a> TryFrom<BorrowRatePartial<'a>> for BorrowRate<'a> {
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct BorrowRatePartial<'a> {
+    pub coin: &'a str,
+    #[serde(borrow)]
+    pub estimate: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub previous: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub average_24hr: OptJson<'a, Decimal>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct LendingRate<'a> {
+    pub coin: &'a str,
+    pub estimate: Decimal,
+    pub previous: Decimal,
+    pub average_24hr: Option<Decimal>,
+}
+
+impl<'a> TryFrom<LendingRatePartial<'a>> for LendingRate<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: LendingRatePartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            coin: val.coin,
+            estimate: val.estimate.deserialize()?,
+            previous: val.previous.deserialize()?,
+            average_24hr: val.average_24hr.deserialize()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct LendingRatePartial<'a> {
     pub coin: &'a str,
     #[serde(borrow)]
     pub estimate: Json<'a, Decimal>,
@@ -308,6 +367,33 @@ mod tests {
             .unwrap()
             .into_iter()
             .map(|p| BorrowRate::try_from(p).unwrap())
+            .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
+    }
+
+    #[test]
+    fn get_lending_rates() {
+        let json = r#"
+{
+  "success": true,
+  "result": [
+    {
+      "coin": "BTC",
+      "estimate": 1.45e-06,
+      "previous": 1.44e-06,
+      "average24hr": 1.44e-06
+    }
+  ]
+}
+"#;
+        let response = GetLendingRatesResponse(json.as_bytes().into());
+
+        let from_partial: Vec<LendingRate> = response
+            .deserialize_partial()
+            .unwrap()
+            .into_iter()
+            .map(|p| LendingRate::try_from(p).unwrap())
             .collect();
 
         assert_eq!(response.deserialize().unwrap(), from_partial);
