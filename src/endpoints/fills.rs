@@ -1,11 +1,14 @@
+use std::convert::TryFrom;
+
 use bytes::Bytes;
 use reqwest::Method;
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{DateTimeStr, NonNegativeDecimal, Price, Side, Size, SortOrder, UnixTimestamp},
+    data::{FtxDateTime, Side, SortOrder, UnixTimestamp},
     private::Sealed,
-    QueryParams, Request,
+    Json, QueryParams, Request,
 };
 
 use super::macros::response;
@@ -78,18 +81,18 @@ impl<'a> Request<true> for GetFills<'a> {
 
 pub struct GetFillsResponse(Bytes);
 
-response!(GetFillsResponse, Vec<Fill<'de>>);
+response!(GetFillsResponse, Vec<Fill<'a>>, Vec<FillPartial<'a>>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct Fill<'a> {
     pub market: &'a str,
     pub future: Option<&'a str>,
     pub side: Side,
-    pub price: Price,
-    pub size: Size,
-    pub time: DateTimeStr<'a>,
+    pub price: Decimal,
+    pub size: Decimal,
+    pub time: FtxDateTime,
     pub id: u64,
     pub order_id: u64,
     pub trade_id: u64,
@@ -97,9 +100,67 @@ pub struct Fill<'a> {
     pub quote_currency: Option<&'a str>,
     pub r#type: FillType,
     pub liquidity: FillLiquidityType,
-    pub fee: NonNegativeDecimal,
+    pub fee: Decimal,
     pub fee_currency: &'a str,
-    pub fee_rate: NonNegativeDecimal,
+    pub fee_rate: Decimal,
+}
+
+impl<'a> TryFrom<FillPartial<'a>> for Fill<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: FillPartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Fill {
+            market: val.market,
+            future: val.future,
+            side: val.side.deserialize()?,
+            price: val.price.deserialize()?,
+            size: val.size.deserialize()?,
+            time: val.time.deserialize()?,
+            id: val.id.deserialize()?,
+            order_id: val.order_id.deserialize()?,
+            trade_id: val.trade_id.deserialize()?,
+            base_currency: val.base_currency,
+            quote_currency: val.quote_currency,
+            r#type: val.r#type.deserialize()?,
+            liquidity: val.liquidity.deserialize()?,
+            fee: val.fee.deserialize()?,
+            fee_currency: val.fee_currency,
+            fee_rate: val.fee_rate.deserialize()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct FillPartial<'a> {
+    pub market: &'a str,
+    pub future: Option<&'a str>,
+    #[serde(borrow)]
+    pub side: Json<'a, Side>,
+    #[serde(borrow)]
+    pub price: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub time: Json<'a, FtxDateTime>,
+    #[serde(borrow)]
+    pub id: Json<'a, u64>,
+    #[serde(borrow)]
+    pub order_id: Json<'a, u64>,
+    #[serde(borrow)]
+    pub trade_id: Json<'a, u64>,
+    pub base_currency: Option<&'a str>,
+    pub quote_currency: Option<&'a str>,
+    #[serde(borrow)]
+    pub r#type: Json<'a, FillType>,
+    #[serde(borrow)]
+    pub liquidity: Json<'a, FillLiquidityType>,
+    #[serde(borrow)]
+    pub fee: Json<'a, Decimal>,
+    pub fee_currency: &'a str,
+    #[serde(borrow)]
+    pub fee_rate: Json<'a, Decimal>,
 }
 
 #[cfg(test)]
@@ -135,6 +196,15 @@ mod tests {
   ]
 }
 "#;
-        GetFillsResponse(json.as_bytes().into()).to_data().unwrap();
+        let response = GetFillsResponse(json.as_bytes().into());
+
+        let from_partial: Vec<Fill<'_>> = response
+            .deserialize_partial()
+            .unwrap()
+            .into_iter()
+            .map(|p| Fill::try_from(p).unwrap())
+            .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 }

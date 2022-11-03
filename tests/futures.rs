@@ -11,7 +11,10 @@ use ftx_rest_client::{
 #[tokio::test]
 #[ignore]
 async fn get_futures() {
-    common::make_request(&GetFutures).await.to_data().unwrap();
+    common::make_request(&GetFutures)
+        .await
+        .deserialize()
+        .unwrap();
 }
 
 #[tokio::test]
@@ -19,7 +22,7 @@ async fn get_futures() {
 async fn get_future() {
     common::make_request(&GetFuture { future: "BTC-PERP" })
         .await
-        .to_data()
+        .deserialize()
         .unwrap();
 }
 
@@ -28,7 +31,7 @@ async fn get_future() {
 async fn get_future_stats() {
     common::make_request(&GetFutureStats { future: "BTC-PERP" })
         .await
-        .to_data()
+        .deserialize()
         .unwrap();
 }
 
@@ -41,7 +44,7 @@ async fn get_funding_rates() {
         end_time: None,
     })
     .await
-    .to_data()
+    .deserialize()
     .unwrap();
 }
 
@@ -50,6 +53,6 @@ async fn get_funding_rates() {
 async fn get_expired_futures() {
     common::make_request(&GetExpiredFutures)
         .await
-        .to_data()
+        .deserialize()
         .unwrap();
 }

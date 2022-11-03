@@ -1,12 +1,14 @@
+use std::convert::TryFrom;
+
 use bytes::Bytes;
 use reqwest::Method;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{DateTimeStr, UnixTimestamp},
+    data::{FtxDateTime, UnixTimestamp},
     private::Sealed,
-    Request,
+    Json, Request,
 };
 
 use super::macros::response;
@@ -52,9 +54,13 @@ impl<'a> Request<true> for GetFundingPayments<'a> {
 
 pub struct GetFundingPaymentsResponse(Bytes);
 
-response!(GetFundingPaymentsResponse, Vec<FundingPayment<'de>>);
+response!(
+    GetFundingPaymentsResponse,
+    Vec<FundingPayment<'a>>,
+    Vec<FundingPaymentPartial<'a>>
+);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct FundingPayment<'a> {
@@ -62,7 +68,36 @@ pub struct FundingPayment<'a> {
     pub id: u64,
     pub payment: Decimal,
     pub rate: Decimal,
-    pub time: DateTimeStr<'a>,
+    pub time: FtxDateTime,
+}
+
+impl<'a> TryFrom<FundingPaymentPartial<'a>> for FundingPayment<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: FundingPaymentPartial<'a>) -> Result<Self, Self::Error> {
+        Ok(FundingPayment {
+            future: val.future,
+            id: val.id.deserialize()?,
+            payment: val.payment.deserialize()?,
+            rate: val.rate.deserialize()?,
+            time: val.time.deserialize()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct FundingPaymentPartial<'a> {
+    pub future: &'a str,
+    #[serde(borrow)]
+    pub id: Json<'a, u64>,
+    #[serde(borrow)]
+    pub payment: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub rate: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub time: Json<'a, FtxDateTime>,
 }
 
 #[cfg(test)]
@@ -71,6 +106,7 @@ mod tests {
 
     use super::*;
 
+    #[allow(dead_code)]
     #[test]
     fn get_funding_payments() {
         let json = r#"
@@ -87,8 +123,15 @@ mod tests {
   ]
 }
 "#;
-        GetFundingPaymentsResponse(json.as_bytes().into())
-            .to_data()
-            .unwrap();
+        let response = GetFundingPaymentsResponse(json.as_bytes().into());
+
+        let from_partial: Vec<FundingPayment<'_>> = response
+            .deserialize_partial()
+            .unwrap()
+            .into_iter()
+            .map(|p| FundingPayment::try_from(p).unwrap())
+            .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 }

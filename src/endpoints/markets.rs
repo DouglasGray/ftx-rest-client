@@ -2,15 +2,12 @@ use bytes::Bytes;
 use reqwest::Method;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
-use std::{borrow::Cow, num::NonZeroU8};
+use std::{borrow::Cow, convert::TryFrom, num::NonZeroU8};
 
 use crate::{
-    data::{
-        DateTimeStr, NonNegativeDecimal, PositiveDecimal, Price, Side, Size, UnixTimestamp,
-        WindowLength,
-    },
+    data::{FtxDateTime, FutureType, Side, UnixTimestamp, WindowLength},
     private::Sealed,
-    QueryParams, Request,
+    Json, OptJson, QueryParams, Request,
 };
 
 use super::macros::response;
@@ -38,6 +35,9 @@ macro_rules! get_candles_path {
         "/markets/{market}/candles"
     };
 }
+
+pub type Price = Decimal;
+pub type Size = Decimal;
 
 /// Market type.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -79,7 +79,7 @@ impl Request<false> for GetMarkets {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetMarketsResponse(Bytes);
 
-response!(GetMarketsResponse, Vec<Market<'de>>);
+response!(GetMarketsResponse, Vec<Market<'a>>, Vec<MarketPartial<'a>>);
 
 /// Retrieve info on a single market.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -104,7 +104,7 @@ impl<'a> Request<false> for GetMarket<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetMarketResponse(Bytes);
 
-response!(GetMarketResponse, Market<'de>);
+response!(GetMarketResponse, Market<'a>, MarketPartial<'a>);
 
 /// Retrieve an orderbook snapshot for the provided market.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -134,7 +134,7 @@ impl<'a> Request<false> for GetOrderBook<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetOrderBookResponse(Bytes);
 
-response!(GetOrderBookResponse, OrderBook);
+response!(GetOrderBookResponse, OrderBook, OrderBookPartial<'a>);
 
 /// Retrieve trades in some time frame for the provided market.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -178,7 +178,7 @@ impl<'a> Request<false> for GetTrades<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetTradesResponse(Bytes);
 
-response!(GetTradesResponse, Vec<Trade<'de>>);
+response!(GetTradesResponse, Vec<Trade>, Vec<TradePartial<'a>>);
 
 /// Retrieve historical prices in some time frame for the provided
 /// market.
@@ -222,42 +222,131 @@ impl<'a> Request<false> for GetCandles<'a> {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GetCandlesResponse(Bytes);
 
-response!(GetCandlesResponse, Vec<Candle<'de>>);
+response!(GetCandlesResponse, Vec<Candle>, Vec<CandlePartial<'a>>);
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
 pub struct Market<'a> {
     pub r#type: MarketType,
-    #[serde(borrow)]
+    pub future_type: Option<FutureType>,
     pub name: &'a str,
-    #[serde(borrow)]
     pub underlying: Option<&'a str>,
-    #[serde(borrow)]
     pub base_currency: Option<&'a str>,
-    #[serde(borrow)]
     pub quote_currency: Option<&'a str>,
     pub enabled: bool,
-    pub ask: Option<Price>,
-    pub bid: Option<Price>,
-    pub last: Option<Price>,
-    pub price: Option<Price>,
+    pub ask: Option<Decimal>,
+    pub bid: Option<Decimal>,
+    pub last: Option<Decimal>,
+    pub price: Option<Decimal>,
     pub post_only: bool,
-    pub price_increment: PositiveDecimal,
-    pub size_increment: PositiveDecimal,
-    pub min_provide_size: PositiveDecimal,
+    pub price_increment: Decimal,
+    pub size_increment: Decimal,
+    pub min_provide_size: Decimal,
     pub tokenized_equity: Option<bool>,
     pub restricted: bool,
     pub high_leverage_fee_exempt: Option<bool>,
-    pub price_high_24h: Option<Price>,
-    pub price_low_24h: Option<Price>,
+    pub price_high_24h: Option<Decimal>,
+    pub price_low_24h: Option<Decimal>,
     pub change_1h: Option<Decimal>,
     pub change_24h: Option<Decimal>,
     pub change_bod: Option<Decimal>,
-    pub quote_volume_24h: Option<NonNegativeDecimal>,
-    pub volume_usd_24h: Option<NonNegativeDecimal>,
-    pub large_order_threshold: Size,
+    pub quote_volume_24h: Option<Decimal>,
+    pub volume_usd_24h: Option<Decimal>,
+    pub large_order_threshold: Decimal,
     pub is_etf_market: bool,
+}
+
+impl<'a> TryFrom<MarketPartial<'a>> for Market<'a> {
+    type Error = serde_json::Error;
+
+    fn try_from(val: MarketPartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            name: val.name,
+            underlying: val.underlying,
+            r#type: val.r#type.deserialize()?,
+            future_type: val.future_type.deserialize()?,
+            enabled: val.enabled.deserialize()?,
+            post_only: val.post_only.deserialize()?,
+            price_increment: val.price_increment.deserialize()?,
+            size_increment: val.size_increment.deserialize()?,
+            last: val.last.deserialize()?,
+            bid: val.bid.deserialize()?,
+            ask: val.ask.deserialize()?,
+            change_1h: val.change_1h.deserialize()?,
+            change_24h: val.change_24h.deserialize()?,
+            change_bod: val.change_bod.deserialize()?,
+            volume_usd_24h: val.volume_usd_24h.deserialize()?,
+            base_currency: val.base_currency,
+            quote_currency: val.quote_currency,
+            price: val.price.deserialize()?,
+            min_provide_size: val.min_provide_size.deserialize()?,
+            tokenized_equity: val.tokenized_equity.deserialize()?,
+            restricted: val.restricted.deserialize()?,
+            high_leverage_fee_exempt: val.high_leverage_fee_exempt.deserialize()?,
+            price_high_24h: val.price_high_24h.deserialize()?,
+            price_low_24h: val.price_low_24h.deserialize()?,
+            quote_volume_24h: val.quote_volume_24h.deserialize()?,
+            large_order_threshold: val.large_order_threshold.deserialize()?,
+            is_etf_market: val.is_etf_market.deserialize()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct MarketPartial<'a> {
+    pub name: &'a str,
+    pub underlying: Option<&'a str>,
+    pub base_currency: Option<&'a str>,
+    pub quote_currency: Option<&'a str>,
+    #[serde(borrow)]
+    pub r#type: Json<'a, MarketType>,
+    #[serde(borrow)]
+    pub future_type: OptJson<'a, FutureType>,
+    #[serde(borrow)]
+    pub enabled: Json<'a, bool>,
+    #[serde(borrow)]
+    pub ask: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub bid: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub last: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub price: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub post_only: Json<'a, bool>,
+    #[serde(borrow)]
+    pub price_increment: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub size_increment: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub min_provide_size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub tokenized_equity: OptJson<'a, bool>,
+    #[serde(borrow)]
+    pub restricted: Json<'a, bool>,
+    #[serde(borrow)]
+    pub high_leverage_fee_exempt: OptJson<'a, bool>,
+    #[serde(borrow)]
+    pub price_high_24h: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub price_low_24h: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub change_1h: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub change_24h: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub change_bod: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub quote_volume_24h: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub volume_usd_24h: OptJson<'a, Decimal>,
+    #[serde(borrow)]
+    pub large_order_threshold: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub is_etf_market: Json<'a, bool>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -268,36 +357,132 @@ pub struct OrderBook {
     pub bids: Vec<(Price, Size)>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct Trade<'a> {
-    pub id: u64,
-    pub liquidation: bool,
-    pub price: Price,
-    pub side: Side,
-    pub size: Size,
-    #[serde(borrow)]
-    pub time: DateTimeStr<'a>,
+impl<'a> TryFrom<OrderBookPartial<'a>> for OrderBook {
+    type Error = serde_json::Error;
+
+    fn try_from(val: OrderBookPartial<'a>) -> Result<Self, Self::Error> {
+        let mut asks = Vec::with_capacity(val.asks.len());
+        let mut bids = Vec::with_capacity(val.bids.len());
+
+        for (p, s) in val.asks.into_iter() {
+            asks.push((p.deserialize()?, s.deserialize()?));
+        }
+        for (p, s) in val.bids.into_iter() {
+            bids.push((p.deserialize()?, s.deserialize()?));
+        }
+
+        Ok(Self { asks, bids })
+    }
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 #[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
-pub struct Candle<'a> {
-    pub close: Price,
-    pub high: Price,
-    pub low: Price,
-    pub open: Price,
-    pub volume: NonNegativeDecimal,
+pub struct OrderBookPartial<'a> {
     #[serde(borrow)]
-    pub start_time: DateTimeStr<'a>,
-    #[serde(deserialize_with = "super::float_ts_to_unix_ts")]
-    pub time: UnixTimestamp,
+    pub asks: Vec<(Json<'a, Price>, Json<'a, Size>)>,
+    #[serde(borrow)]
+    pub bids: Vec<(Json<'a, Price>, Json<'a, Size>)>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct Trade {
+    pub id: u64,
+    pub liquidation: bool,
+    pub price: Decimal,
+    pub side: Side,
+    pub size: Decimal,
+    pub time: FtxDateTime,
+}
+
+impl<'a> TryFrom<TradePartial<'a>> for Trade {
+    type Error = serde_json::Error;
+
+    fn try_from(val: TradePartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            id: val.id.deserialize()?,
+            liquidation: val.liquidation.deserialize()?,
+            price: val.price.deserialize()?,
+            side: val.side.deserialize()?,
+            size: val.size.deserialize()?,
+            time: val.time.deserialize()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct TradePartial<'a> {
+    #[serde(borrow)]
+    pub id: Json<'a, u64>,
+    #[serde(borrow)]
+    pub liquidation: Json<'a, bool>,
+    #[serde(borrow)]
+    pub price: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub side: Json<'a, Side>,
+    #[serde(borrow)]
+    pub size: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub time: Json<'a, FtxDateTime>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct Candle {
+    pub close: Decimal,
+    pub high: Decimal,
+    pub low: Decimal,
+    pub open: Decimal,
+    pub volume: Decimal,
+    pub start_time: FtxDateTime,
+    pub time: f64,
+}
+
+impl<'a> TryFrom<CandlePartial<'a>> for Candle {
+    type Error = serde_json::Error;
+
+    fn try_from(val: CandlePartial<'a>) -> Result<Self, Self::Error> {
+        Ok(Self {
+            close: val.close.deserialize()?,
+            high: val.high.deserialize()?,
+            low: val.low.deserialize()?,
+            open: val.open.deserialize()?,
+            volume: val.volume.deserialize()?,
+            start_time: val.start_time.deserialize()?,
+            time: val.time.deserialize()?,
+        })
+    }
+}
+
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+#[cfg_attr(feature = "deny-unknown-fields", serde(deny_unknown_fields))]
+pub struct CandlePartial<'a> {
+    #[serde(borrow)]
+    pub close: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub high: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub low: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub open: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub volume: Json<'a, Decimal>,
+    #[serde(borrow)]
+    pub start_time: Json<'a, FtxDateTime>,
+    #[serde(borrow)]
+    pub time: Json<'a, f64>,
 }
 
 #[cfg(test)]
 mod tests {
+    use std::convert::TryInto;
+
     use crate::Response;
 
     use super::*;
@@ -336,9 +521,16 @@ mod tests {
   ]
 }
 "#;
-        GetMarketsResponse(json.as_bytes().into())
-            .to_data()
-            .unwrap();
+        let response = GetMarketsResponse(json.as_bytes().into());
+
+        let from_partial: Vec<Market> = response
+            .deserialize_partial()
+            .unwrap()
+            .into_iter()
+            .map(|p| Market::try_from(p).unwrap())
+            .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -373,7 +565,11 @@ mod tests {
     }
 }
 "#;
-        GetMarketResponse(json.as_bytes().into()).to_data().unwrap();
+        let response = GetMarketResponse(json.as_bytes().into());
+
+        let from_partial: Market<'_> = response.deserialize_partial().unwrap().try_into().unwrap();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -393,8 +589,16 @@ mod tests {
   ]
 }
 "#;
+        let response = GetTradesResponse(json.as_bytes().into());
 
-        GetTradesResponse(json.as_bytes().into()).to_data().unwrap();
+        let from_partial: Vec<Trade> = response
+            .deserialize_partial()
+            .unwrap()
+            .into_iter()
+            .map(|p| Trade::try_from(p).unwrap())
+            .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 
     #[test]
@@ -405,7 +609,7 @@ mod tests {
   "result": [
     {
       "startTime": "2022-04-03T14:43:00+00:00",
-      "time": 1648996980000,
+      "time": 1648996980000.0,
       "open": 46371,
       "high": 46381,
       "low": 46371,
@@ -415,8 +619,15 @@ mod tests {
   ]
 }
 "#;
-        GetCandlesResponse(json.as_bytes().into())
-            .to_data()
-            .unwrap();
+        let response = GetCandlesResponse(json.as_bytes().into());
+
+        let from_partial: Vec<_> = response
+            .deserialize_partial()
+            .unwrap()
+            .into_iter()
+            .map(|p| Candle::try_from(p).unwrap())
+            .collect();
+
+        assert_eq!(response.deserialize().unwrap(), from_partial);
     }
 }
