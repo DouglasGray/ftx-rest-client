@@ -10,108 +10,60 @@ pub mod statistics;
 pub mod subaccounts;
 pub mod wallet;
 
-use serde::{de, Deserialize, Deserializer, Serialize};
-use std::{
-    convert::{TryFrom, TryInto},
-    error::Error as StdError,
-    fmt,
-};
+use serde::{Deserialize, Deserializer, Serialize};
+use std::convert::TryFrom;
 
 use crate::{
-    data::UnixTimestamp,
     error::{Error, ErrorKind},
+    Json,
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct Success<T> {
-    result: T,
+#[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+pub struct FtxResponse<'a, T> {
+    #[serde(borrow, deserialize_with = "deserialize_some")]
+    result: Option<Json<'a, T>>,
+    error: Option<&'a str>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-pub(crate) struct Failure<'a> {
-    #[serde(borrow)]
-    error: &'a str,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) enum FtxResponse<'a, T> {
-    Success(Success<T>),
-    Failure(Failure<'a>),
-}
-
-impl<'a, T> FtxResponse<'a, T> {
-    pub(crate) fn try_into(self) -> Result<T, Error> {
-        match self {
-            FtxResponse::Success(success) => Ok(success.result),
-            FtxResponse::Failure(failure) => {
-                Err(Error::new(ErrorKind::RejectedByExchange).with_source(failure.error))
-            }
+impl<'a, T> FtxResponse<'a, T>
+where
+    T: Deserialize<'a>,
+{
+    pub(crate) fn deserialize(self) -> Result<T, Error> {
+        if let Some(res) = self.result {
+            res.deserialize()
+                .map_err(|e| Error::new(ErrorKind::DeserializationFailed).with_source(e))
+        } else if let Some(err) = self.error {
+            Err(Error::new(ErrorKind::RejectedByExchange).with_source(err))
+        } else {
+            Err(Error::new(ErrorKind::RejectedByExchange))
         }
     }
 }
 
-impl<'a, T> From<Success<T>> for FtxResponse<'a, T> {
-    fn from(val: Success<T>) -> Self {
-        Self::Success(val)
-    }
-}
-
-impl<'a, T> From<Failure<'a>> for FtxResponse<'a, T> {
-    fn from(e: Failure<'a>) -> Self {
-        Self::Failure(e)
-    }
-}
-
-impl<'de, T> TryFrom<&'de [u8]> for FtxResponse<'de, T>
+impl<'a, T> TryFrom<&'a [u8]> for FtxResponse<'a, T>
 where
-    T: Deserialize<'de>,
+    T: Deserialize<'a>,
 {
     type Error = Error;
 
-    fn try_from(v: &'de [u8]) -> Result<Self, Error> {
-        match serde_json::from_slice::<Success<T>>(v) {
-            Ok(success) => Ok(success.into()),
-            Err(success_parse_err) => match serde_json::from_slice::<Failure>(v) {
-                Ok(failure) => Ok(failure.into()),
-                Err(failure_parse_err) => Err(Error::new(ErrorKind::DeserializationFailed)
-                    .with_source(FtxResponseDeserializationError {
-                        success_parse_err,
-                        failure_parse_err,
-                    })),
-            },
-        }
+    fn try_from(v: &'a [u8]) -> Result<Self, Error> {
+        serde_json::from_slice(v)
+            .map_err(|e| Error::new(ErrorKind::DeserializationFailed).with_source(e))
     }
 }
 
-#[derive(Debug)]
-struct FtxResponseDeserializationError {
-    success_parse_err: serde_json::Error,
-    failure_parse_err: serde_json::Error,
-}
-
-impl fmt::Display for FtxResponseDeserializationError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "failed to deserialize either a success response ({}) or a failure response ({})",
-            self.success_parse_err, self.failure_parse_err
-        )
-    }
-}
-
-impl StdError for FtxResponseDeserializationError {}
-
-fn float_ts_to_unix_ts<'de, D>(deserializer: D) -> Result<UnixTimestamp, D::Error>
+fn deserialize_some<'de, T, D>(deserializer: D) -> Result<Option<T>, D::Error>
 where
+    T: Deserialize<'de>,
     D: Deserializer<'de>,
 {
-    let ts: f64 = Deserialize::deserialize(deserializer)?;
-    ts.try_into().map_err(de::Error::custom)
+    Deserialize::deserialize(deserializer).map(Some)
 }
 
 mod macros {
     macro_rules! response {
-        ($res:ty, $data:ty) => {
+        ($res:ty, $data:ty, $partial_data:ty) => {
             impl From<Bytes> for $res {
                 fn from(b: Bytes) -> Self {
                     Self(b)
@@ -126,8 +78,10 @@ mod macros {
 
             impl crate::private::Sealed for $res {}
 
-            impl<'de> crate::Response<'de> for $res {
-                type Data = $data;
+            impl crate::Response for $res {
+                type Data<'a> = $data;
+
+                type PartialData<'a> = $partial_data;
             }
         };
     }
