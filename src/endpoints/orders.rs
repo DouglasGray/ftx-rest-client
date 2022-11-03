@@ -19,15 +19,33 @@ macro_rules! get_order_status_path {
     };
 }
 
+macro_rules! get_order_status_by_client_id_path {
+    () => {
+        "/orders/by_client_id/{order_id}"
+    };
+}
+
 macro_rules! edit_order_path {
     () => {
         "/orders/{order_id}/modify"
     };
 }
 
+macro_rules! edit_order_by_client_id_path {
+    () => {
+        "/orders/by_client_id/{order_id}/modify"
+    };
+}
+
 macro_rules! cancel_order_path {
     () => {
         "/orders/{order_id}"
+    };
+}
+
+macro_rules! cancel_order_by_client_id_path {
+    () => {
+        "/orders/by_client_id/{order_id}"
     };
 }
 
@@ -198,10 +216,7 @@ impl<'a> Request<true> for GetOrderStatus<'a> {
     fn path(&self) -> Cow<'_, str> {
         let path = match self.order_id {
             OrderId::Exchange(id) => format!(get_order_status_path!(), order_id = id),
-            OrderId::Client(id) => format!(
-                get_order_status_path!(),
-                order_id = format!("by_client_id/{}", id)
-            ),
+            OrderId::Client(id) => format!(get_order_status_by_client_id_path!(), order_id = id),
         };
 
         Cow::Owned(path)
@@ -264,10 +279,7 @@ impl<'a> Request<true> for EditOrder<'a> {
     fn path(&self) -> Cow<'_, str> {
         let path = match self.order_id {
             OrderId::Exchange(id) => format!(edit_order_path!(), order_id = id),
-            OrderId::Client(id) => format!(
-                edit_order_path!(),
-                order_id = format!("by_client_id/{}", id)
-            ),
+            OrderId::Client(id) => format!(edit_order_by_client_id_path!(), order_id = id),
         };
 
         Cow::Owned(path)
@@ -300,10 +312,7 @@ impl<'a> Request<true> for CancelOrder<'a> {
     fn path(&self) -> Cow<'_, str> {
         let path = match self.order_id {
             OrderId::Exchange(id) => format!(cancel_order_path!(), order_id = id),
-            OrderId::Client(id) => format!(
-                cancel_order_path!(),
-                order_id = format!("by_client_id/{}", id)
-            ),
+            OrderId::Client(id) => format!(cancel_order_by_client_id_path!(), order_id = id),
         };
 
         Cow::Owned(path)
