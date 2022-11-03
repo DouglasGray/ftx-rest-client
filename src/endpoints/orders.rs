@@ -6,7 +6,7 @@ use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    data::{CancelAckMsg, FtxDateTime, Side, UnixTimestamp},
+    data::{CancelAckMsg, FtxDateTime, PositiveDecimal, Side, UnixTimestamp},
     private::Sealed,
     Json, OptJson, QueryParams, Request,
 };
@@ -75,9 +75,9 @@ pub enum OrderId<'a> {
 #[serde(rename_all = "camelCase")]
 pub struct EditOrderOpts<'a> {
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub price: Option<Decimal>,
+    pub price: Option<PositiveDecimal>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub size: Option<Decimal>,
+    pub size: Option<PositiveDecimal>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub client_id: Option<&'a str>,
 }
@@ -218,8 +218,8 @@ response!(GetOrderStatusResponse, Order<'a>, OrderPartial<'a>);
 pub struct PlaceOrder<'a> {
     pub market: &'a str,
     pub side: Side,
-    pub price: Option<Decimal>,
-    pub size: Decimal,
+    pub price: Option<PositiveDecimal>,
+    pub size: PositiveDecimal,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub client_id: Option<&'a str>,
     #[serde(flatten, skip_serializing_if = "Option::is_none")]

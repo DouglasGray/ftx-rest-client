@@ -1,12 +1,16 @@
+use rust_decimal::Decimal;
 use serde::{de, ser, Deserialize, Deserializer, Serialize};
 use std::{
     convert::TryFrom,
     error::Error as StdError,
-    fmt,
+    fmt::{self, Display},
     num::NonZeroU8,
+    str::FromStr,
     time::{SystemTime, UNIX_EPOCH},
 };
 use time::{format_description::well_known::Rfc3339, OffsetDateTime};
+
+use crate::error::BoxError;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Exchange<'a>(pub &'a str);
@@ -225,6 +229,92 @@ impl Serialize for FtxDateTime {
     {
         let s = self.0.format(&Rfc3339).map_err(ser::Error::custom)?;
         serializer.serialize_str(&s)
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize)]
+pub struct PositiveDecimal(Decimal);
+
+impl PositiveDecimal {
+    pub fn new(d: impl Into<Decimal>) -> Option<Self> {
+        let d = d.into();
+
+        if d > Decimal::ZERO {
+            Self(d).into()
+        } else {
+            None
+        }
+    }
+
+    pub fn new_unchecked(d: impl Into<Decimal>) -> Self {
+        Self(d.into())
+    }
+
+    pub fn get(&self) -> Decimal {
+        self.0
+    }
+}
+
+impl FromStr for PositiveDecimal {
+    type Err = ParseDecimalError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let d = Decimal::from_str(s).map_err(|err| ParseDecimalError {
+            s: s.into(),
+            err: err.into(),
+        })?;
+
+        PositiveDecimal::try_from(d).map_err(|err| ParseDecimalError {
+            s: s.into(),
+            err: err.into(),
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct ParseDecimalError {
+    s: String,
+    err: BoxError,
+}
+
+impl Display for ParseDecimalError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "failed to parse {}", self.s)
+    }
+}
+
+impl StdError for ParseDecimalError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        Some(self.err.as_ref())
+    }
+}
+
+impl TryFrom<Decimal> for PositiveDecimal {
+    type Error = TryFromDecimalError;
+
+    fn try_from(d: Decimal) -> Result<Self, Self::Error> {
+        Self::new(d).ok_or_else(|| TryFromDecimalError {
+            d,
+            err: "value must be greater than zero".into(),
+        })
+    }
+}
+
+#[derive(Debug)]
+pub struct TryFromDecimalError {
+    d: Decimal,
+    err: BoxError,
+}
+
+impl Display for TryFromDecimalError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "failed to convert {}", self.d)
+    }
+}
+
+impl StdError for TryFromDecimalError {
+    fn source(&self) -> Option<&(dyn StdError + 'static)> {
+        Some(self.err.as_ref())
     }
 }
 

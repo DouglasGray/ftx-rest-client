@@ -226,8 +226,8 @@ async fn place_limit_order_then_edit() {
 
     let order_edit = order_edit_response.deserialize().unwrap();
 
-    assert_eq!(order_edit.price, new_price);
-    assert_eq!(order_edit.size, new_size);
+    assert_eq!(order_edit.price, new_price.get());
+    assert_eq!(order_edit.size, new_size.get());
 
     let new_order_id = order_edit.id;
 
@@ -317,8 +317,8 @@ async fn place_limit_order_then_edit_with_client_id() {
 
     let order_edit = order_edit_response.deserialize().unwrap();
 
-    assert_eq!(order_edit.price, new_price);
-    assert_eq!(order_edit.size, new_size);
+    assert_eq!(order_edit.price, new_price.get());
+    assert_eq!(order_edit.size, new_size.get());
     assert_eq!(order_edit.client_id, Some(new_client_id.as_str()));
 
     common::make_auth_request(
