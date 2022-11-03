@@ -15,5 +15,5 @@ async fn main() {
         .await
         .unwrap();
 
-    println!("{:#?}", response.deserialize_partial().unwrap());
+    println!("{:#?}", response.deserialize().unwrap());
 }
